@@ -1,25 +1,4 @@
--- =====================================================
--- RECLAIM HABIT APP - DATABASE SCHEMA
--- =====================================================
--- This file contains the main database schema for the Reclaim habit tracking app.
--- It includes all tables, constraints, and enums needed for the application.
--- 
--- Tables included:
--- - users: User accounts and profiles
--- - challenges: Available habit challenges
--- - user_challenges: User's participation in challenges
--- - daily_logs: Daily habit completion logs
--- - streaks: User streak tracking
--- - badges: Available achievement badges
--- - user_badges: User's earned badges
---
--- Run this file first to create the database structure.
--- =====================================================
 
--- Create custom enums for better data integrity
--- =====================================================
-
--- Difficulty levels for challenges
 CREATE TYPE difficulty_level AS ENUM (
     'easy',      -- Simple habits like drinking water
     'medium',    -- Moderate habits like 30min exercise
@@ -212,34 +191,4 @@ CREATE TRIGGER trigger_update_user_last_active
     FOR EACH ROW
     EXECUTE FUNCTION update_user_last_active();
 
--- =====================================================
--- COMMENTS FOR API USAGE
--- =====================================================
 
-/*
-API ENDPOINT USAGE NOTES:
-
-/api/signup:
-- INSERT INTO users (username, email, password_hash, first_name, last_name)
-- Use create_user() function for better error handling
-
-/api/login:
-- SELECT id, username, email, password_hash FROM users WHERE username = ? OR email = ?
-- App must verify password hash
-
-/api/challenges:
-- SELECT * FROM challenges WHERE is_active = true
-- JOIN with user_challenges to show user's participation status
-
-/api/complete_challenge:
-- Use complete_challenge(user_id, challenge_id) function
-- Returns new XP and streak values
-
-/api/leaderboard:
-- SELECT * FROM leaderboard_view ORDER BY rank LIMIT 50
-- Refresh materialized view if needed
-
-/api/daily_log:
-- INSERT INTO daily_logs (user_id, challenge_id, log_date, completed, mood, notes)
-- UPDATE streaks table accordingly
-*/
