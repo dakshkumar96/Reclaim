@@ -1,25 +1,3 @@
--- =====================================================
--- RECLAIM HABIT APP - PL/pgSQL FUNCTIONS
--- =====================================================
--- This file contains custom PL/pgSQL functions for the Reclaim app.
--- These functions provide safe, atomic operations for common app tasks.
---
--- Functions included:
--- - complete_challenge(): Safely complete a challenge and update XP/streaks
--- - create_user(): Create new user with proper error handling
---
--- These functions should be called from your Flask app for safe database operations.
--- =====================================================
-
--- =====================================================
--- COMPLETE CHALLENGE FUNCTION
--- =====================================================
-
--- Function: complete_challenge(user_id, challenge_id)
--- Purpose: Atomically complete a challenge, update XP, and manage streaks
--- Returns: JSON with new_xp and new_streak values
--- Safety: Uses row-level locking to prevent race conditions
--- =====================================================
 CREATE OR REPLACE FUNCTION complete_challenge(
     p_user_id INTEGER,
     p_challenge_id INTEGER
@@ -152,15 +130,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- =====================================================
--- CREATE USER FUNCTION
--- =====================================================
-
--- Function: create_user(username, password_hash, email, first_name, last_name)
--- Purpose: Create new user with proper validation and error handling
--- Returns: JSON with user_id and success status
--- Safety: Handles unique constraint violations gracefully
--- =====================================================
 CREATE OR REPLACE FUNCTION create_user(
     p_username TEXT,
     p_password_hash TEXT,
@@ -227,14 +196,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- =====================================================
--- HELPER FUNCTIONS
--- =====================================================
 
--- Function: get_user_stats(user_id)
--- Purpose: Get comprehensive user statistics
--- Returns: JSON with user stats, streaks, and badges
--- =====================================================
 CREATE OR REPLACE FUNCTION get_user_stats(p_user_id INTEGER)
 RETURNS JSON AS $$
 DECLARE
@@ -281,42 +243,3 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql;
-
--- =====================================================
--- USAGE EXAMPLES AND NOTES
--- =====================================================
-
-/*
-FLASK API USAGE EXAMPLES:
-
-1. Complete Challenge API (/api/complete_challenge):
-   ```python
-   result = db.execute("SELECT complete_challenge(%s, %s)", [user_id, challenge_id])
-   return jsonify(result.fetchone()[0])
-   ```
-
-2. User Registration API (/api/signup):
-   ```python
-   result = db.execute("SELECT create_user(%s, %s, %s, %s, %s)", 
-                      [username, hashed_password, email, first_name, last_name])
-   return jsonify(result.fetchone()[0])
-   ```
-
-3. Get User Stats API (/api/user_stats):
-   ```python
-   result = db.execute("SELECT get_user_stats(%s)", [user_id])
-   return jsonify(result.fetchone()[0])
-   ```
-
-ERROR HANDLING:
-- All functions return JSON with success/error information
-- Use try/catch in Flask to handle PostgreSQL exceptions
-- Functions include proper validation and constraint checking
-- Row-level locking prevents race conditions in complete_challenge()
-
-SECURITY NOTES:
-- Functions use parameterized queries (no SQL injection risk)
-- Password hashing must be done in application layer
-- User input validation is performed in functions
-- Proper error messages without exposing sensitive information
-*/

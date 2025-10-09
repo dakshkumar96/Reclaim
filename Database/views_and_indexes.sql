@@ -1,29 +1,4 @@
--- =====================================================
--- RECLAIM HABIT APP - VIEWS AND INDEXES
--- =====================================================
--- This file contains database views and indexes for the Reclaim app.
--- Views provide convenient data access patterns for common queries.
--- Indexes optimize query performance for frequently accessed data.
---
--- Contents:
--- - Leaderboard view (materialized for performance)
--- - User dashboard view
--- - Performance indexes on key columns
--- - JSONB indexes for future extensibility
---
--- Run this file after schema.sql and functions.sql
--- =====================================================
 
--- =====================================================
--- MATERIALIZED VIEWS
--- =====================================================
-
--- Leaderboard View: Top users by XP with ranking
--- =====================================================
--- Purpose: Provides a fast way to get top users for leaderboard display
--- Usage: SELECT * FROM leaderboard_view ORDER BY rank LIMIT 50;
--- Refresh: REFRESH MATERIALIZED VIEW leaderboard_view;
--- =====================================================
 CREATE MATERIALIZED VIEW leaderboard_view AS
 SELECT 
     u.id,
@@ -48,15 +23,7 @@ CREATE UNIQUE INDEX idx_leaderboard_user_id ON leaderboard_view (id);
 CREATE INDEX idx_leaderboard_rank ON leaderboard_view (rank);
 CREATE INDEX idx_leaderboard_xp ON leaderboard_view (xp DESC);
 
--- =====================================================
--- REGULAR VIEWS
--- =====================================================
 
--- User Dashboard View: Comprehensive user information
--- =====================================================
--- Purpose: Provides all user data needed for dashboard display
--- Usage: SELECT * FROM user_dashboard_view WHERE user_id = ?;
--- =====================================================
 CREATE VIEW user_dashboard_view AS
 SELECT 
     u.id as user_id,
@@ -86,11 +53,7 @@ SELECT
 FROM users u
 WHERE u.is_active = true;
 
--- Challenge Progress View: User's progress in all challenges
--- =====================================================
--- Purpose: Shows detailed progress for each user's challenges
--- Usage: SELECT * FROM challenge_progress_view WHERE user_id = ?;
--- =====================================================
+
 CREATE VIEW challenge_progress_view AS
 SELECT 
     uc.id as user_challenge_id,
@@ -123,11 +86,6 @@ JOIN challenges c ON uc.challenge_id = c.id
 LEFT JOIN streaks s ON uc.user_id = s.user_id AND uc.challenge_id = s.challenge_id
 WHERE c.is_active = true;
 
--- Daily Activity View: Recent daily logs with challenge information
--- =====================================================
--- Purpose: Shows recent daily activity for users
--- Usage: SELECT * FROM daily_activity_view WHERE user_id = ? ORDER BY log_date DESC;
--- =====================================================
 CREATE VIEW daily_activity_view AS
 SELECT 
     dl.id as log_id,
@@ -148,12 +106,6 @@ FROM daily_logs dl
 LEFT JOIN challenges c ON dl.challenge_id = c.id
 ORDER BY dl.log_date DESC, dl.created_at DESC;
 
--- =====================================================
--- PERFORMANCE INDEXES
--- =====================================================
-
--- Primary lookup indexes (most important for performance)
--- =====================================================
 
 -- Users table indexes
 CREATE INDEX idx_users_username ON users (username);
@@ -206,9 +158,7 @@ CREATE INDEX idx_user_challenges_user_challenge ON user_challenges (user_id, cha
 CREATE INDEX idx_daily_logs_user_challenge_date ON daily_logs (user_id, challenge_id, log_date);
 CREATE INDEX idx_streaks_user_challenge ON streaks (user_id, challenge_id);
 
--- =====================================================
--- PARTIAL INDEXES FOR SPECIFIC USE CASES
--- =====================================================
+
 
 -- Index only active users (saves space and improves performance)
 CREATE INDEX idx_users_active_xp ON users (xp DESC) WHERE is_active = true;
@@ -222,12 +172,7 @@ CREATE INDEX idx_user_challenges_completed_user ON user_challenges (user_id, com
 -- Index only successful daily logs
 CREATE INDEX idx_daily_logs_completed_user_date ON daily_logs (user_id, log_date DESC) WHERE completed = true;
 
--- =====================================================
--- MAINTENANCE FUNCTIONS
--- =====================================================
 
--- Function to refresh materialized views
--- =====================================================
 CREATE OR REPLACE FUNCTION refresh_leaderboard()
 RETURNS VOID AS $$
 BEGIN
@@ -250,63 +195,3 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- =====================================================
--- USAGE NOTES AND EXAMPLES
--- =====================================================
-
-/*
-API ENDPOINT USAGE WITH VIEWS:
-
-1. Leaderboard API (/api/leaderboard):
-   ```sql
-   SELECT * FROM leaderboard_view 
-   ORDER BY rank 
-   LIMIT 50;
-   ```
-
-2. User Dashboard API (/api/dashboard):
-   ```sql
-   SELECT * FROM user_dashboard_view 
-   WHERE user_id = ?;
-   ```
-
-3. Challenge Progress API (/api/user_challenges):
-   ```sql
-   SELECT * FROM challenge_progress_view 
-   WHERE user_id = ? 
-   ORDER BY started_at DESC;
-   ```
-
-4. Daily Activity API (/api/daily_logs):
-   ```sql
-   SELECT * FROM daily_activity_view 
-   WHERE user_id = ? 
-   AND log_date >= CURRENT_DATE - INTERVAL '30 days'
-   ORDER BY log_date DESC;
-   ```
-
-PERFORMANCE TIPS:
-
-1. Refresh materialized views periodically:
-   ```sql
-   SELECT refresh_leaderboard();
-   ```
-
-2. Use EXPLAIN ANALYZE to check query performance:
-   ```sql
-   EXPLAIN ANALYZE SELECT * FROM leaderboard_view WHERE rank <= 10;
-   ```
-
-3. Monitor index usage:
-   ```sql
-   SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch
-   FROM pg_stat_user_indexes
-   ORDER BY idx_scan DESC;
-   ```
-
-MAINTENANCE SCHEDULE:
-- Refresh leaderboard_view every 5-10 minutes during peak usage
-- Consider refreshing less frequently during off-peak hours
-- Monitor query performance and add indexes as needed
-- Regular VACUUM and ANALYZE on tables with high write activity
-*/

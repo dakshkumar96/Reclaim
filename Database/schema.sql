@@ -1,4 +1,3 @@
-
 CREATE TYPE difficulty_level AS ENUM (
     'easy',      -- Simple habits like drinking water
     'medium',    -- Moderate habits like 30min exercise
