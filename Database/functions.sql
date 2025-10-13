@@ -243,3 +243,21 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- Helper no-op functions to support app context calls
+CREATE OR REPLACE FUNCTION set_user_context(p_user_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    -- Placeholder for future RLS or per-session context
+    PERFORM 1;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION clear_user_context()
+RETURNS VOID AS $$
+BEGIN
+    -- Placeholder for future RLS or per-session context
+    PERFORM 1;
+END;
+$$ LANGUAGE plpgsql;
