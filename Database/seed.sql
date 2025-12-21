@@ -157,3 +157,25 @@ INSERT INTO daily_logs (user_id, challenge_id, log_date, completed, mood, notes)
 ((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-24', true, 'okay', 'Early morning is tough but doable.'),
 ((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-23', false, 'bad', 'Could not wake up early.');
 
+-- =====================================================
+-- STREAK DATA
+-- =====================================================
+
+-- Streak information for users' challenges
+-- =====================================================
+
+INSERT INTO streaks (user_id, challenge_id, current_streak, longest_streak, last_active) VALUES
+-- Alex's streaks
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 0, 7, '2024-01-08'),  -- Completed hydration challenge with 7-day streak
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 3, 3, '2024-01-20'),  -- Currently on 3-day streak for morning warrior
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Digital Detox'), 0, 21, '2023-12-22'), -- Completed digital detox with 21-day streak
+
+-- Sarah's streaks
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 3, 3, '2024-01-23'),  -- Currently on 3-day streak for hydration
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 0, 14, '2023-12-29'), -- Completed morning warrior with 14-day streak
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Digital Detox'), 5, 5, '2024-01-18'),  -- Currently on 5-day streak for digital detox
+
+-- Mike's streaks
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 1, 1, '2024-01-26'),  -- Just started hydration challenge
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 1, 1, '2024-01-24');  -- Just started morning warrior
+
