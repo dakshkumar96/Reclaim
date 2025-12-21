@@ -208,3 +208,106 @@ INSERT INTO badges (name, description, icon, xp_requirement, streak_requirement,
 ('Productivity Pro', 'Complete 3 productivity challenges', 'clock', 0, 0, 'productivity'),
 ('Mindful Master', 'Complete 3 mindfulness challenges', 'brain', 0, 0, 'mindfulness');
 
+-- =====================================================
+-- USER BADGE AWARDS
+-- =====================================================
+
+-- Badges that users have already earned
+-- =====================================================
+
+INSERT INTO user_badges (user_id, badge_id, earned_at) VALUES
+-- Alex's badges (high XP user)
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'First Steps'), '2024-01-01 10:00:00+00'),  -- First Steps
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'Rising Star'), '2024-01-05 10:00:00+00'),  -- Rising Star
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'XP Master'), '2024-01-10 10:00:00+00'),  -- XP Master
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'Consistency King'), '2024-01-08 10:00:00+00'),  -- Consistency King (7-day streak)
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'Challenge Starter'), '2024-01-08 10:00:00+00'),  -- Challenge Starter
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'Health Enthusiast'), '2024-01-08 10:00:00+00'), -- Health Enthusiast
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM badges WHERE name = 'Mindful Master'), '2023-12-22 10:00:00+00'), -- Mindful Master
+
+-- Sarah's badges (medium XP user)
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM badges WHERE name = 'First Steps'), '2023-12-15 10:00:00+00'),  -- First Steps
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM badges WHERE name = 'Rising Star'), '2023-12-20 10:00:00+00'),  -- Rising Star
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM badges WHERE name = 'Consistency King'), '2023-12-29 10:00:00+00'),  -- Consistency King
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM badges WHERE name = 'Challenge Starter'), '2023-12-29 10:00:00+00'),  -- Challenge Starter
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM badges WHERE name = 'Productivity Pro'), '2023-12-29 10:00:00+00'), -- Productivity Pro
+
+-- Mike's badges (beginner user)
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM badges WHERE name = 'First Steps'), '2024-01-25 10:00:00+00');  -- First Steps
+
+-- =====================================================
+-- REFRESH MATERIALIZED VIEWS
+-- =====================================================
+
+-- Refresh the leaderboard view with the new data
+-- =====================================================
+REFRESH MATERIALIZED VIEW leaderboard_view;
+
+-- =====================================================
+-- VERIFICATION QUERIES
+-- =====================================================
+
+-- Uncomment these queries to verify the seed data was inserted correctly
+-- =====================================================
+
+/*
+-- Check users and their XP
+SELECT username, xp, level, created_at FROM users ORDER BY xp DESC;
+
+-- Check challenges
+SELECT title, difficulty, xp_reward, duration_days, category FROM challenges;
+
+-- Check user challenge participations
+SELECT u.username, c.title, uc.status, uc.progress_days 
+FROM user_challenges uc
+JOIN users u ON uc.user_id = u.id
+JOIN challenges c ON uc.challenge_id = c.id
+ORDER BY u.username, uc.started_at;
+
+-- Check leaderboard
+SELECT rank, username, xp, level, completed_challenges, badges_earned 
+FROM leaderboard_view 
+ORDER BY rank 
+LIMIT 10;
+
+-- Check user badges
+SELECT u.username, b.name as badge_name, ub.earned_at
+FROM user_badges ub
+JOIN users u ON ub.user_id = u.id
+JOIN badges b ON ub.badge_id = b.id
+ORDER BY u.username, ub.earned_at;
+*/
+
+-- =====================================================
+-- NOTES FOR DEVELOPMENT
+-- =====================================================
+
+/*
+SEED DATA SUMMARY:
+
+Users:
+- Alex Johnson: 1250 XP, Level 13 (experienced user)
+- Sarah Chen: 680 XP, Level 7 (intermediate user)  
+- Mike Rodriguez: 150 XP, Level 2 (beginner user)
+
+Challenges:
+- Hydration Hero: Easy, 7 days, 50 XP (health)
+- Morning Warrior: Medium, 14 days, 150 XP (productivity)
+- Digital Detox: Medium, 21 days, 200 XP (mindfulness)
+- Study Marathon: Hard, 30 days, 500 XP (education)
+
+Activity:
+- Alex has completed 2 challenges and is active in 1
+- Sarah has completed 1 challenge and is active in 2
+- Mike is active in 2 challenges (just starting)
+
+Badges:
+- 15 different badges across XP, streak, challenge, and category types
+- Users have earned various badges based on their activity
+
+TESTING:
+- All users have password "password123" (hashed)
+- Use these accounts for testing login functionality
+- Challenge completion and streak tracking can be tested
+- Leaderboard functionality is ready to test
+*/
