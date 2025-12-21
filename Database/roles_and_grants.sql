@@ -32,3 +32,19 @@ GRANT SELECT ON badges TO reclaim_app;
 GRANT SELECT, INSERT ON user_badges TO reclaim_app;
 GRANT USAGE, SELECT ON SEQUENCE user_badges_id_seq TO reclaim_app;
 
+
+-- Grant access to views for the application
+GRANT SELECT ON user_dashboard_view TO reclaim_app;
+GRANT SELECT ON challenge_progress_view TO reclaim_app;
+GRANT SELECT ON daily_activity_view TO reclaim_app;
+GRANT SELECT ON leaderboard_view TO reclaim_app;
+
+
+
+-- Grant execute permissions on custom functions
+GRANT EXECUTE ON FUNCTION complete_challenge(INTEGER, INTEGER) TO reclaim_app;
+GRANT EXECUTE ON FUNCTION create_user(TEXT, TEXT, TEXT, TEXT, TEXT) TO reclaim_app;
+GRANT EXECUTE ON FUNCTION get_user_stats(INTEGER) TO reclaim_app;
+GRANT EXECUTE ON FUNCTION refresh_leaderboard() TO reclaim_app;
+GRANT EXECUTE ON FUNCTION get_user_rank(INTEGER) TO reclaim_app;
+
