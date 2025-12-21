@@ -128,3 +128,28 @@ $$ LANGUAGE plpgsql;
 -- Grant execute permission to application role
 GRANT EXECUTE ON FUNCTION clear_user_context() TO reclaim_app;
 
+-- Limit concurrent connections for app role
+ALTER ROLE reclaim_app CONNECTION LIMIT 50;
+
+-- Limit concurrent connections for admin role
+ALTER ROLE reclaim_admin CONNECTION LIMIT 10;
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    action VARCHAR(100) NOT NULL,
+    table_name VARCHAR(100),
+    record_id INTEGER,
+    old_values JSONB,
+    new_values JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Grant permissions on audit log
+GRANT INSERT ON audit_log TO reclaim_app;
+GRANT USAGE, SELECT ON SEQUENCE audit_log_id_seq TO reclaim_app;
+GRANT SELECT ON audit_log TO reclaim_admin;
+
+-
