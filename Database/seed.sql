@@ -56,3 +56,44 @@ INSERT INTO users (username, email, password_hash, first_name, last_name, xp, le
     'America/Chicago'
 );
 
+-- =====================================================
+-- SAMPLE CHALLENGES
+-- =====================================================
+
+-- Insert 4 diverse challenges covering different habit categories
+-- =====================================================
+
+INSERT INTO challenges (title, description, difficulty, xp_reward, duration_days, category) VALUES
+(
+    'Hydration Hero',
+    'Drink 8 glasses of water every day for a week. Stay hydrated and feel the difference in your energy levels and overall health.',
+    'easy',
+    50,
+    7,
+    'health'
+),
+(
+    'Morning Warrior',
+    'Wake up at 6 AM and complete a 30-minute morning routine including exercise, meditation, and planning your day.',
+    'medium',
+    150,
+    14,
+    'productivity'
+),
+(
+    'Digital Detox',
+    'Spend no more than 2 hours on social media per day. Focus on real-world connections and meaningful activities.',
+    'medium',
+    200,
+    21,
+    'mindfulness'
+),
+(
+    'Study Marathon',
+    'Study for 2 hours every day for a month. Perfect for students or professionals learning new skills.',
+    'hard',
+    500,
+    30,
+    'education'
+);
+
