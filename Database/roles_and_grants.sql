@@ -64,3 +64,12 @@ GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO reclaim_admin;
 GRANT USAGE ON SCHEMA public TO reclaim_admin;
 GRANT CREATE ON SCHEMA public TO reclaim_admin;
 
+
+-- Enable RLS on users table
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own data
+CREATE POLICY user_own_data ON users
+    FOR ALL TO reclaim_app
+    USING (id = current_setting('app.current_user_id')::INTEGER);
+
