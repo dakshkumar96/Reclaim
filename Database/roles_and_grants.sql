@@ -105,3 +105,26 @@ CREATE POLICY user_own_badges ON user_badges
     FOR ALL TO reclaim_app
     USING (user_id = current_setting('app.current_user_id')::INTEGER);
 
+
+CREATE OR REPLACE FUNCTION set_user_context(p_user_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    PERFORM set_config('app.current_user_id', p_user_id::TEXT, false);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to application role
+GRANT EXECUTE ON FUNCTION set_user_context(INTEGER) TO reclaim_app;
+
+-- Function to clear user context (for logout)
+-- =====================================================
+CREATE OR REPLACE FUNCTION clear_user_context()
+RETURNS VOID AS $$
+BEGIN
+    PERFORM set_config('app.current_user_id', NULL, false);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to application role
+GRANT EXECUTE ON FUNCTION clear_user_context() TO reclaim_app;
+
