@@ -132,3 +132,28 @@ INSERT INTO user_challenges (user_id, challenge_id, status, started_at, complete
 -- Mike is working on morning warrior
 ((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 'active', '2024-01-22 06:00:00+00', NULL, 2);
 
+-- =====================================================
+-- SAMPLE DAILY LOGS
+-- =====================================================
+
+-- Recent daily logs showing user activity patterns
+-- =====================================================
+
+INSERT INTO daily_logs (user_id, challenge_id, log_date, completed, mood, notes) VALUES
+-- Alex's recent logs
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), '2024-01-08', true, 'excellent', 'Completed the hydration challenge! Feeling great.'),
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-20', true, 'good', 'Great morning routine today.'),
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-19', true, 'okay', 'Tired but pushed through.'),
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-18', false, 'bad', 'Overslept, need to reset alarm.'),
+
+-- Sarah's recent logs
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), '2024-01-23', true, 'good', 'Staying hydrated!'),
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), '2024-01-22', true, 'excellent', 'Perfect water intake today.'),
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), '2024-01-21', false, 'okay', 'Forgot to track water intake.'),
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Digital Detox'), '2024-01-18', true, 'good', 'Limited social media successfully.'),
+
+-- Mike's recent logs
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), '2024-01-26', true, 'good', 'First day of hydration challenge!'),
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-24', true, 'okay', 'Early morning is tough but doable.'),
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), '2024-01-23', false, 'bad', 'Could not wake up early.');
+
