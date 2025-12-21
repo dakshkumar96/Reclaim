@@ -179,3 +179,32 @@ INSERT INTO streaks (user_id, challenge_id, current_streak, longest_streak, last
 ((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 1, 1, '2024-01-26'),  -- Just started hydration challenge
 ((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 1, 1, '2024-01-24');  -- Just started morning warrior
 
+-- =====================================================
+-- ACHIEVEMENT BADGES
+-- =====================================================
+
+-- Various badges users can earn for different achievements
+-- =====================================================
+
+INSERT INTO badges (name, description, icon, xp_requirement, streak_requirement, category) VALUES
+-- XP-based badges
+('First Steps', 'Earn your first 100 XP', 'star', 100, 0, 'xp'),
+('Rising Star', 'Earn 500 XP', 'star-fill', 500, 0, 'xp'),
+('XP Master', 'Earn 1000 XP', 'trophy', 1000, 0, 'xp'),
+('Legend', 'Earn 2000 XP', 'crown', 2000, 0, 'xp'),
+
+-- Streak-based badges
+('Consistency King', 'Maintain a 7-day streak', 'fire', 0, 7, 'streak'),
+('Streak Master', 'Maintain a 30-day streak', 'fire-fill', 0, 30, 'streak'),
+('Unstoppable', 'Maintain a 100-day streak', 'lightning', 0, 100, 'streak'),
+
+-- Challenge completion badges
+('Challenge Starter', 'Complete your first challenge', 'play-circle', 0, 0, 'challenge'),
+('Challenge Master', 'Complete 5 challenges', 'check-circle', 0, 0, 'challenge'),
+('Habit Hero', 'Complete 10 challenges', 'shield-check', 0, 0, 'challenge'),
+
+-- Category-specific badges
+('Health Enthusiast', 'Complete 3 health challenges', 'heart', 0, 0, 'health'),
+('Productivity Pro', 'Complete 3 productivity challenges', 'clock', 0, 0, 'productivity'),
+('Mindful Master', 'Complete 3 mindfulness challenges', 'brain', 0, 0, 'mindfulness');
+
