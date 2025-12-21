@@ -129,3 +129,135 @@ BEGIN
     END;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_user(
+    p_username TEXT,
+    p_password_hash TEXT,
+    p_email TEXT,
+    p_first_name TEXT DEFAULT NULL,
+    p_last_name TEXT DEFAULT NULL
+)
+RETURNS JSON AS $$
+DECLARE
+    v_user_id INTEGER;
+    v_result JSON;
+BEGIN
+    -- Validate required parameters
+    IF p_username IS NULL OR p_password_hash IS NULL OR p_email IS NULL THEN
+        RAISE EXCEPTION 'Username, password_hash, and email are required';
+    END IF;
+    
+    -- Validate username length
+    IF LENGTH(p_username) < 3 THEN
+        RAISE EXCEPTION 'Username must be at least 3 characters long';
+    END IF;
+    
+    -- Validate email format (basic check)
+    IF p_email !~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+        RAISE EXCEPTION 'Invalid email format';
+    END IF;
+    
+    BEGIN
+        -- Insert new user
+        INSERT INTO users (username, password_hash, email, first_name, last_name)
+        VALUES (p_username, p_password_hash, p_email, p_first_name, p_last_name)
+        RETURNING id INTO v_user_id;
+        
+        -- Create result JSON
+        v_result := json_build_object(
+            'success', true,
+            'user_id', v_user_id,
+            'username', p_username,
+            'message', 'User created successfully'
+        );
+        
+        RETURN v_result;
+        
+    EXCEPTION
+        WHEN unique_violation THEN
+            -- Handle unique constraint violations
+            IF SQLSTATE = '23505' THEN
+                -- Check which constraint was violated
+                IF SQLERRM LIKE '%username%' THEN
+                    RAISE EXCEPTION 'Username already exists: %', p_username;
+                ELSIF SQLERRM LIKE '%email%' THEN
+                    RAISE EXCEPTION 'Email already exists: %', p_email;
+                ELSE
+                    RAISE EXCEPTION 'User with this information already exists';
+                END IF;
+            END IF;
+        WHEN check_violation THEN
+            -- Handle check constraint violations
+            RAISE EXCEPTION 'Invalid user data: %', SQLERRM;
+        WHEN OTHERS THEN
+            -- Handle any other errors
+            RAISE EXCEPTION 'Error creating user: %', SQLERRM;
+    END;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_user_stats(p_user_id INTEGER)
+RETURNS JSON AS $$
+DECLARE
+    v_user users%ROWTYPE;
+    v_total_challenges INTEGER;
+    v_completed_challenges INTEGER;
+    v_total_badges INTEGER;
+    v_result JSON;
+BEGIN
+    -- Get user information
+    SELECT * INTO v_user FROM users WHERE id = p_user_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User not found: %', p_user_id;
+    END IF;
+    
+    -- Get challenge statistics
+    SELECT COUNT(*) INTO v_total_challenges
+    FROM user_challenges 
+    WHERE user_id = p_user_id;
+    
+    SELECT COUNT(*) INTO v_completed_challenges
+    FROM user_challenges 
+    WHERE user_id = p_user_id AND status = 'completed';
+    
+    -- Get badge count
+    SELECT COUNT(*) INTO v_total_badges
+    FROM user_badges 
+    WHERE user_id = p_user_id;
+    
+    -- Build result JSON
+    v_result := json_build_object(
+        'user_id', v_user.id,
+        'username', v_user.username,
+        'xp', v_user.xp,
+        'level', v_user.level,
+        'total_challenges', v_total_challenges,
+        'completed_challenges', v_completed_challenges,
+        'total_badges', v_total_badges,
+        'created_at', v_user.created_at,
+        'last_active', v_user.last_active
+    );
+    
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Helper no-op functions to support app context calls
+CREATE OR REPLACE FUNCTION set_user_context(p_user_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    -- Placeholder for future RLS or per-session context
+    PERFORM 1;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION clear_user_context()
+RETURNS VOID AS $$
+BEGIN
+    -- Placeholder for future RLS or per-session context
+    PERFORM 1;
+END;
+$$ LANGUAGE plpgsql;
