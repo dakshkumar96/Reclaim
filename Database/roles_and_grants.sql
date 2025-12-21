@@ -48,3 +48,19 @@ GRANT EXECUTE ON FUNCTION get_user_stats(INTEGER) TO reclaim_app;
 GRANT EXECUTE ON FUNCTION refresh_leaderboard() TO reclaim_app;
 GRANT EXECUTE ON FUNCTION get_user_rank(INTEGER) TO reclaim_app;
 
+
+
+-- All table permissions
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO reclaim_admin;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO reclaim_admin;
+
+-- All view permissions
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO reclaim_admin;
+
+-- All function permissions
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO reclaim_admin;
+
+-- Schema permissions
+GRANT USAGE ON SCHEMA public TO reclaim_admin;
+GRANT CREATE ON SCHEMA public TO reclaim_admin;
+
