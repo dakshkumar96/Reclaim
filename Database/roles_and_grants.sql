@@ -73,3 +73,35 @@ CREATE POLICY user_own_data ON users
     FOR ALL TO reclaim_app
     USING (id = current_setting('app.current_user_id')::INTEGER);
 
+-- Enable RLS on user_challenges table
+ALTER TABLE user_challenges ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own challenges
+CREATE POLICY user_own_challenges ON user_challenges
+    FOR ALL TO reclaim_app
+    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
+-- Enable RLS on daily_logs table
+ALTER TABLE daily_logs ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own logs
+CREATE POLICY user_own_logs ON daily_logs
+    FOR ALL TO reclaim_app
+    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
+-- Enable RLS on streaks table
+ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own streaks
+CREATE POLICY user_own_streaks ON streaks
+    FOR ALL TO reclaim_app
+    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
+-- Enable RLS on user_badges table
+ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own badges
+CREATE POLICY user_own_badges ON user_badges
+    FOR ALL TO reclaim_app
+    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+
