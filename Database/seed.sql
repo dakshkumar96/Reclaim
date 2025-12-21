@@ -97,3 +97,38 @@ INSERT INTO challenges (title, description, difficulty, xp_reward, duration_days
     'education'
 );
 
+-- =====================================================
+-- USER CHALLENGE PARTICIPATIONS
+-- =====================================================
+
+-- Alex (high XP user) - has completed some challenges and is active in others
+-- =====================================================
+
+INSERT INTO user_challenges (user_id, challenge_id, status, started_at, completed_at, progress_days) VALUES
+-- Alex completed the hydration challenge
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 'completed', '2024-01-01 08:00:00+00', '2024-01-08 08:00:00+00', 7),
+-- Alex is currently working on morning warrior
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 'active', '2024-01-15 06:00:00+00', NULL, 5),
+-- Alex completed digital detox
+((SELECT id FROM users WHERE username = 'alex_habit_master'), (SELECT id FROM challenges WHERE title = 'Digital Detox'), 'completed', '2023-12-01 09:00:00+00', '2023-12-22 09:00:00+00', 21);
+
+-- Sarah (medium XP user) - active in multiple challenges
+-- =====================================================
+
+INSERT INTO user_challenges (user_id, challenge_id, status, started_at, completed_at, progress_days) VALUES
+-- Sarah is working on hydration challenge
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 'active', '2024-01-20 07:00:00+00', NULL, 3),
+-- Sarah completed morning warrior
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 'completed', '2023-12-15 06:00:00+00', '2023-12-29 06:00:00+00', 14),
+-- Sarah is working on digital detox
+((SELECT id FROM users WHERE username = 'sarah_wellness'), (SELECT id FROM challenges WHERE title = 'Digital Detox'), 'active', '2024-01-10 10:00:00+00', NULL, 8);
+
+-- Mike (beginner user) - just starting out
+-- =====================================================
+
+INSERT INTO user_challenges (user_id, challenge_id, status, started_at, completed_at, progress_days) VALUES
+-- Mike is working on hydration challenge
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Hydration Hero'), 'active', '2024-01-25 08:00:00+00', NULL, 1),
+-- Mike is working on morning warrior
+((SELECT id FROM users WHERE username = 'mike_beginner'), (SELECT id FROM challenges WHERE title = 'Morning Warrior'), 'active', '2024-01-22 06:00:00+00', NULL, 2);
+
