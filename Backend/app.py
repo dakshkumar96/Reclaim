@@ -95,3 +95,90 @@ def health_check():
         logger.error(f"Health check failed: {e}")
         return jsonify({"status": "unhealthy", "database": "disconnected"}), 500
 
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    """Register a new user"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['username', 'email', 'password']
+    for field in required_fields:
+        if not data.get(field):
+            return bad_request(f"{field} is required")
+    
+    username = data['username'].strip()
+    email = data['email'].strip().lower()
+    password = data['password']
+    first_name = data.get('first_name', '').strip()
+    last_name = data.get('last_name', '').strip()
+    
+    # Basic validation
+    if len(username) < 3:
+        return bad_request("Username must be at least 3 characters")
+    
+    if len(password) < 6:
+        return bad_request("Password must be at least 6 characters")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if username or email already exists
+                cur.execute(
+                    "SELECT id FROM users WHERE username = %s OR email = %s;",
+                    (username, email)
+                )
+                if cur.fetchone():
+                    return jsonify({
+                        "success": False, 
+                        "message": "Username or email already exists"
+                    }), 409
+                
+                # Hash password
+                hashed_password = bcrypt.hashpw(
+                    password.encode('utf-8'), 
+                    bcrypt.gensalt()
+                ).decode('utf-8')
+                
+                # Create user using database function
+                cur.execute(
+                    """SELECT create_user(%s, %s, %s, %s, %s) as result;""",
+                    (username, hashed_password, email, first_name, last_name)
+                )
+                result = cur.fetchone()[0]
+                
+                # The function returns JSON, so we need to parse it
+                import json
+                if isinstance(result, dict):
+                    result_data = result
+                elif isinstance(result, str):
+                    result_data = json.loads(result)
+                else:
+                    # PostgreSQL returns JSON as a string, parse it
+                    result_data = json.loads(str(result))
+                
+                    user_id = result_data['user_id']
+                
+                conn.commit()
+                
+                # Create JWT token
+                token = create_token(user_id, username)
+                
+                return jsonify({
+                    "success": True,
+                    "message": "User created successfully",
+                    "user_id": user_id,
+                    "username": username,
+                    "token": token
+                }), 201
+                
+    except Exception as e:
+        logger.error(f"Signup error: {e}", exc_info=True)
+        error_message = str(e)
+        return jsonify({
+            "success": False, 
+            "message": f"Signup failed: {error_message}"
+        }), 500
+
