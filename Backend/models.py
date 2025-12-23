@@ -19,3 +19,10 @@ def user_by_username(username: str) -> Optional[Tuple[int, str, str]]:
             (username,),
         )
         return cur.fetchone()
+
+
+def username_exists(username: str) -> bool:
+    """Check if a username is already taken."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM users WHERE username = %s;", (username,))
+        return cur.fetchone() is not None
