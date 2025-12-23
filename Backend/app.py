@@ -278,3 +278,155 @@ def get_challenges():
             "message": "Error fetching challenges"
         }), 500
 
+@app.route("/api/challenges/active", methods=["GET"])
+@token_required
+def get_active_user_challenges():
+    """Get challenges that the current user is actively participating in"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                cur.execute("""
+                    SELECT uc.id, c.title, c.description, c.difficulty, 
+                           c.xp_reward, uc.progress_days, c.duration_days,
+                           uc.started_at
+                    FROM user_challenges uc
+                    JOIN challenges c ON uc.challenge_id = c.id
+                    WHERE uc.user_id = %s AND uc.status = 'active'
+                    ORDER BY uc.started_at DESC;
+                """, (g.user_id,))
+                
+                active_challenges = []
+                for row in cur.fetchall():
+                    progress_percentage = (row[5] / row[6]) * 100 if row[6] > 0 else 0
+                    
+                    active_challenges.append({
+                        "user_challenge_id": row[0],
+                        "title": row[1],
+                        "description": row[2],
+                        "difficulty": row[3],
+                        "xp_reward": row[4],
+                        "progress_days": row[5],
+                        "total_days": row[6],
+                        "progress_percentage": round(progress_percentage, 1),
+                        "started_at": row[7].isoformat() if row[7] else None
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "active_challenges": active_challenges
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching active challenges: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching active challenges"
+        }), 500
+
+@app.route("/api/challenges/start", methods=["POST"])
+@token_required
+def start_challenge():
+    """Start a new challenge"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    challenge_id = data.get('challenge_id')
+    
+    if not challenge_id:
+        return bad_request("challenge_id is required")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Check if user is already participating
+                cur.execute("""
+                    SELECT id FROM user_challenges 
+                    WHERE user_id = %s AND challenge_id = %s;
+                """, (g.user_id, challenge_id))
+                
+                if cur.fetchone():
+                    return jsonify({
+                        "success": False, 
+                        "message": "You are already participating in this challenge"
+                    }), 409
+                
+                # Start the challenge
+                cur.execute("""
+                    INSERT INTO user_challenges (user_id, challenge_id, status, started_at)
+                    VALUES (%s, %s, 'active', CURRENT_TIMESTAMP)
+                    RETURNING id;
+                """, (g.user_id, challenge_id))
+                
+                user_challenge_id = cur.fetchone()[0]
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Challenge started successfully",
+                    "user_challenge_id": user_challenge_id
+                }), 201
+                
+    except Exception as e:
+        logger.error(f"Error starting challenge: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error starting challenge"
+        }), 500
+
+@app.route("/api/challenges/complete", methods=["POST"])
+@token_required
+def complete_challenge():
+    """Mark a challenge as completed"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    challenge_id = data.get('challenge_id')
+    
+    if not challenge_id:
+        return bad_request("challenge_id is required")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Use the database function to complete the challenge
+                cur.execute("SELECT complete_challenge(%s, %s);", (g.user_id, challenge_id))
+                result = cur.fetchone()[0]
+                
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Challenge completed successfully!",
+                    "data": result
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error completing challenge: {e}")
+        error_msg = str(e)
+        if "already completed" in error_msg.lower():
+            return jsonify({
+                "success": False, 
+                "message": "Challenge already completed"
+            }), 409
+        elif "not actively participating" in error_msg.lower():
+            return jsonify({
+                "success": False, 
+                "message": "You are not participating in this challenge"
+            }), 404
+        else:
+            return jsonify({
+                "success": False, 
+                "message": "Error completing challenge"
+            }), 500
+
