@@ -182,3 +182,99 @@ def signup():
             "message": f"Signup failed: {error_message}"
         }), 500
 
+@app.route("/api/login", methods=["POST"])
+def login():
+    """Authenticate user and return JWT token"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    
+    if not username or not password:
+        return bad_request("Username and password are required")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get user by username
+                cur.execute(
+                    """SELECT id, username, password_hash, email 
+                       FROM users WHERE username = %s;""",
+                    (username,)
+                )
+                user = cur.fetchone()
+                
+                if not user:
+                    return jsonify({
+                        "success": False, 
+                        "message": "Invalid credentials"
+                    }), 401
+                
+                user_id, db_username, db_password_hash, email = user
+                
+                # Verify password
+                if not bcrypt.checkpw(password.encode('utf-8'), db_password_hash.encode('utf-8')):
+                    return jsonify({
+                        "success": False, 
+                        "message": "Invalid credentials"
+                    }), 401
+                
+                # Create JWT token
+                token = create_token(user_id, username)
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Login successful",
+                    "user_id": user_id,
+                    "username": username,
+                    "email": email,
+                    "token": token
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Internal server error during login"
+        }), 500
+
+@app.route("/api/challenges", methods=["GET"])
+def get_challenges():
+    """Get all active challenges from database"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, title, description, difficulty, xp_reward, 
+                           duration_days, category 
+                    FROM challenges 
+                    WHERE is_active = true
+                    ORDER BY difficulty, title;
+                """)
+                
+                challenges = []
+                for row in cur.fetchall():
+                    challenges.append({
+                        "id": row[0],
+                        "title": row[1],
+                        "description": row[2],
+                        "difficulty": row[3],
+                        "xp_reward": row[4],
+                        "duration_days": row[5],
+                        "category": row[6]
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "challenges": challenges
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching challenges: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching challenges"
+        }), 500
+
