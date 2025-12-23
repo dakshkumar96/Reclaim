@@ -513,3 +513,51 @@ def logout():
             "success": False, 
             "message": "Error during logout"
         }), 500
+
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"success": False, "message": "Endpoint not found"}), 404
+
+@app.route("/api/ai/chat", methods=["POST"])
+@token_required
+def ai_chat():
+    """AI coach chat endpoint"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    message = data.get('message', '').strip()
+    
+    if not message:
+        return bad_request("Message is required")
+    
+    # Placeholder AI response - replace with actual AI integration
+    responses = [
+        "That's a great question! Let me help you with that.",
+        "I understand. Building habits takes time and consistency.",
+        "Remember, progress is progress, no matter how small!",
+        "You're doing great! Keep up the momentum.",
+        "That's a common challenge. Here's what I suggest...",
+    ]
+    
+    import random
+    ai_response = random.choice(responses)
+    
+    return jsonify({
+        "success": True,
+        "message": ai_response,
+        "response": ai_response
+    }), 200
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"success": False, "message": "Endpoint not found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"success": False, "message": "Internal server error"}), 500
+
+if __name__ == "__main__":
+    logger.info("Starting Reclaim Habit Tracker API...")
+    app.run(debug=True, host='0.0.0.0', port=5000)
