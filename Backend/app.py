@@ -430,3 +430,86 @@ def complete_challenge():
                 "message": "Error completing challenge"
             }), 500
 
+@app.route("/api/leaderboard", methods=["GET"])
+def get_leaderboard():
+    """Get the current leaderboard"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT username, xp, level, rank, completed_challenges, badges_earned
+                    FROM leaderboard_view
+                    ORDER BY rank
+                    LIMIT 50;
+                """)
+                
+                leaderboard = []
+                for row in cur.fetchall():
+                    leaderboard.append({
+                        "username": row[0],
+                        "xp": row[1],
+                        "level": row[2],
+                        "rank": row[3],
+                        "completed_challenges": row[4],
+                        "badges_earned": row[5]
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "leaderboard": leaderboard
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching leaderboard: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching leaderboard"
+        }), 500
+
+@app.route("/api/profile", methods=["GET"])
+@token_required
+def get_profile():
+    """Get current user's profile and stats"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get user stats using database function
+                cur.execute("SELECT get_user_stats(%s);", (g.user_id,))
+                result = cur.fetchone()[0]
+                
+                return jsonify({
+                    "success": True,
+                    "profile": result
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching profile: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching profile"
+        }), 500
+
+@app.route("/api/logout", methods=["POST"])
+@token_required
+def logout():
+    """Clear user context (optional server-side cleanup)"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT clear_user_context();")
+                conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Logged out successfully"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error during logout"
+        }), 500
