@@ -26,3 +26,17 @@ def username_exists(username: str) -> bool:
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT 1 FROM users WHERE username = %s;", (username,))
         return cur.fetchone() is not None
+
+
+def create_user(username: str, password_hash: str) -> int:
+    """Insert a new user and return its id."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO users (username, password) VALUES (%s, %s) RETURNING id;",
+            (username, password_hash),
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        return new_id
+
+
