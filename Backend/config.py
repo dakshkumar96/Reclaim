@@ -22,3 +22,19 @@ class Config:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     DB_HOST = os.getenv("DB_HOST", "localhost")
 
+    # JWT settings
+    JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
+    JWT_ALG = "HS256"
+    JWT_EXPIRES_MIN = int(os.getenv("JWT_EXPIRES_MIN", "1440"))
+
+    @staticmethod
+    def db_dsn():
+        """Return a dict that psycopg2.connect understands."""
+        return {
+            "dbname": Config.DB_NAME,
+            "user": Config.DB_USER,
+            "password": Config.DB_PASSWORD,
+            "host": Config.DB_HOST,
+        }
+
+
