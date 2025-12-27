@@ -1,4 +1,4 @@
-﻿CREATE OR REPLACE FUNCTION complete_challenge(
+CREATE OR REPLACE FUNCTION complete_challenge(
     p_user_id INTEGER,
     p_challenge_id INTEGER
 )
@@ -159,6 +159,7 @@ BEGIN
     
     BEGIN
         -- Insert new user
+        -- SECURITY DEFINER allows this to bypass RLS when creating users
         INSERT INTO users (username, password_hash, email, first_name, last_name)
         VALUES (p_username, p_password_hash, p_email, p_first_name, p_last_name)
         RETURNING id INTO v_user_id;
@@ -176,15 +177,12 @@ BEGIN
     EXCEPTION
         WHEN unique_violation THEN
             -- Handle unique constraint violations
-            IF SQLSTATE = '23505' THEN
-                -- Check which constraint was violated
-                IF SQLERRM LIKE '%username%' THEN
-                    RAISE EXCEPTION 'Username already exists: %', p_username;
-                ELSIF SQLERRM LIKE '%email%' THEN
-                    RAISE EXCEPTION 'Email already exists: %', p_email;
-                ELSE
-                    RAISE EXCEPTION 'User with this information already exists';
-                END IF;
+            IF SQLERRM LIKE '%username%' OR SQLERRM LIKE '%users_username_key%' THEN
+                RAISE EXCEPTION 'Username already exists: %', p_username;
+            ELSIF SQLERRM LIKE '%email%' OR SQLERRM LIKE '%users_email_key%' THEN
+                RAISE EXCEPTION 'Email already exists: %', p_email;
+            ELSE
+                RAISE EXCEPTION 'User with this information already exists';
             END IF;
         WHEN check_violation THEN
             -- Handle check constraint violations
@@ -194,7 +192,9 @@ BEGIN
             RAISE EXCEPTION 'Error creating user: %', SQLERRM;
     END;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public;
 
 
 CREATE OR REPLACE FUNCTION get_user_stats(p_user_id INTEGER)
@@ -245,19 +245,4 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Helper no-op functions to support app context calls
-CREATE OR REPLACE FUNCTION set_user_context(p_user_id INTEGER)
-RETURNS VOID AS $$
-BEGIN
-    -- Placeholder for future RLS or per-session context
-    PERFORM 1;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION clear_user_context()
-RETURNS VOID AS $$
-BEGIN
-    -- Placeholder for future RLS or per-session context
-    PERFORM 1;
-END;
-$$ LANGUAGE plpgsql;
+-- Note: set_user_context and clear_user_context are defined in roles_and_grants.sql
