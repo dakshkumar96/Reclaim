@@ -68,50 +68,109 @@ GRANT CREATE ON SCHEMA public TO reclaim_admin;
 -- Enable RLS on users table
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own data
-CREATE POLICY user_own_data ON users
-    FOR ALL TO reclaim_app
-    USING (id = current_setting('app.current_user_id')::INTEGER);
+-- Drop old policies if they exist (for re-running this script)
+DROP POLICY IF EXISTS user_own_data ON users;
+DROP POLICY IF EXISTS user_own_data_select ON users;
+DROP POLICY IF EXISTS user_own_data_update ON users;
+DROP POLICY IF EXISTS user_own_data_insert ON users;
+
+-- Policy: Users can only see their own data (when logged in)
+-- The 'true' parameter makes current_setting return NULL instead of erroring when parameter doesn't exist
+CREATE POLICY user_own_data_select ON users
+    FOR SELECT TO reclaim_app
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND id = current_setting('user.current_user_id', true)::INTEGER
+    );
+
+-- Policy: Users can only update their own data (when logged in)
+CREATE POLICY user_own_data_update ON users
+    FOR UPDATE TO reclaim_app
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND id = current_setting('user.current_user_id', true)::INTEGER
+    );
+
+-- Policy: Allow inserts for signup (no user_id needed)
+-- This is critical - signup happens BEFORE a user exists
+CREATE POLICY user_own_data_insert ON users
+    FOR INSERT TO reclaim_app
+    WITH CHECK (true);
 
 -- Enable RLS on user_challenges table
 ALTER TABLE user_challenges ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own challenges
+-- Policy: Users can only see their own challenges (when logged in)
 CREATE POLICY user_own_challenges ON user_challenges
     FOR ALL TO reclaim_app
-    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    )
+    WITH CHECK (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    );
 
 -- Enable RLS on daily_logs table
 ALTER TABLE daily_logs ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own logs
+-- Policy: Users can only see their own logs (when logged in)
 CREATE POLICY user_own_logs ON daily_logs
     FOR ALL TO reclaim_app
-    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    )
+    WITH CHECK (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    );
 
 -- Enable RLS on streaks table
 ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own streaks
+-- Policy: Users can only see their own streaks (when logged in)
 CREATE POLICY user_own_streaks ON streaks
     FOR ALL TO reclaim_app
-    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    )
+    WITH CHECK (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    );
 
 -- Enable RLS on user_badges table
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own badges
+-- Policy: Users can only see their own badges (when logged in)
 CREATE POLICY user_own_badges ON user_badges
     FOR ALL TO reclaim_app
-    USING (user_id = current_setting('app.current_user_id')::INTEGER);
+    USING (
+        current_setting('user.current_user_id', true) IS NOT NULL 
+        AND current_setting('user.current_user_id', true) != ''
+        AND user_id = current_setting('user.current_user_id', true)::INTEGER
+    );
 
 
 CREATE OR REPLACE FUNCTION set_user_context(p_user_id INTEGER)
 RETURNS VOID AS $$
 BEGIN
-    PERFORM set_config('app.current_user_id', p_user_id::TEXT, false);
+    PERFORM set_config('user.current_user_id', p_user_id::TEXT, false);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public;
 
 -- Grant execute permission to application role
 GRANT EXECUTE ON FUNCTION set_user_context(INTEGER) TO reclaim_app;
@@ -121,7 +180,7 @@ GRANT EXECUTE ON FUNCTION set_user_context(INTEGER) TO reclaim_app;
 CREATE OR REPLACE FUNCTION clear_user_context()
 RETURNS VOID AS $$
 BEGIN
-    PERFORM set_config('app.current_user_id', NULL, false);
+    PERFORM set_config('user.current_user_id', '', false);
 END;
 $$ LANGUAGE plpgsql;
 

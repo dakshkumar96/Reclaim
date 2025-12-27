@@ -95,6 +95,54 @@ INSERT INTO challenges (title, description, difficulty, xp_reward, duration_days
     500,
     30,
     'education'
+),
+(
+    'Daily Exercise',
+    'Exercise for at least 30 minutes every day. This can include walking, running, yoga, or any physical activity you enjoy.',
+    'easy',
+    75,
+    14,
+    'health'
+),
+(
+    'Reading Habit',
+    'Read for 30 minutes every day. Build a consistent reading habit and expand your knowledge one page at a time.',
+    'medium',
+    180,
+    21,
+    'education'
+),
+(
+    'Early Bird',
+    'Wake up at the same time every day (including weekends) to regulate your sleep schedule and boost productivity.',
+    'medium',
+    120,
+    14,
+    'productivity'
+),
+(
+    'Gratitude Journal',
+    'Write down 3 things you are grateful for every day. Cultivate positivity and mindfulness in your daily routine.',
+    'easy',
+    60,
+    30,
+    'mindfulness'
+),
+(
+    'No Junk Food',
+    'Avoid processed and junk food for a month. Focus on whole, nutritious foods to improve your health.',
+    'hard',
+    300,
+    30,
+    'health'
+),
+(
+    'Meditation Master',
+    'Meditate for 10 minutes every day. Reduce stress, improve focus, and find inner peace through regular practice.',
+    'easy',
+    70,
+    21,
+    'mindfulness'
 );
 
 -- =====================================================
