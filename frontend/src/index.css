@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-soft-gray;
+  }
+  
+  body {
+    @apply bg-pure-black text-pure-white font-body;
+    background-image: 
+      linear-gradient(rgba(12, 12, 12, 0.95), rgba(12, 12, 12, 0.95)),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  code {
+    @apply font-mono;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-dark-gray/60 backdrop-blur-md border border-soft-gray rounded-lg;
+  }
+
+  .vintage-border {
+    @apply border-2;
+    border-image: linear-gradient(135deg, #FF9A8B 0%, #FF6A88 50%, #FF99AC 100%) 1;
+  }
+
+  .glow-effect {
+    @apply transition-shadow duration-300;
+  }
+
+  .glow-effect:hover {
+    box-shadow: 0 0 15px rgba(247, 215, 116, 0.4);
+  }
+
+  .tap-scale {
+    @apply transition-transform duration-150 active:scale-95;
+  }
+}
