@@ -125,17 +125,6 @@ def signup():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Check if username or email already exists
-                cur.execute(
-                    "SELECT id FROM users WHERE username = %s OR email = %s;",
-                    (username, email)
-                )
-                if cur.fetchone():
-                    return jsonify({
-                        "success": False, 
-                        "message": "Username or email already exists"
-                    }), 409
-                
                 # Hash password
                 hashed_password = bcrypt.hashpw(
                     password.encode('utf-8'), 
@@ -143,6 +132,7 @@ def signup():
                 ).decode('utf-8')
                 
                 # Create user using database function
+                # The function will handle duplicate checking and RLS properly
                 cur.execute(
                     """SELECT create_user(%s, %s, %s, %s, %s) as result;""",
                     (username, hashed_password, email, first_name, last_name)
@@ -159,7 +149,15 @@ def signup():
                     # PostgreSQL returns JSON as a string, parse it
                     result_data = json.loads(str(result))
                 
-                    user_id = result_data['user_id']
+                # Check if function returned an error
+                if not result_data.get('success', True):
+                    error_msg = result_data.get('message', 'Signup failed')
+                    return jsonify({
+                        "success": False,
+                        "message": error_msg
+                    }), 409
+                
+                user_id = result_data['user_id']
                 
                 conn.commit()
                 
@@ -177,6 +175,19 @@ def signup():
     except Exception as e:
         logger.error(f"Signup error: {e}", exc_info=True)
         error_message = str(e)
+        
+        # Handle specific database errors
+        if "already exists" in error_message.lower() or "username already" in error_message.lower():
+            return jsonify({
+                "success": False,
+                "message": "Username or email already exists"
+            }), 409
+        elif "email already" in error_message.lower():
+            return jsonify({
+                "success": False,
+                "message": "Email already exists"
+            }), 409
+        
         return jsonify({
             "success": False, 
             "message": f"Signup failed: {error_message}"
@@ -234,7 +245,7 @@ def login():
                 }), 200
                 
     except Exception as e:
-        logger.error(f"Login error: {e}")
+        logger.error(f"Login error: {e}", exc_info=True)
         return jsonify({
             "success": False, 
             "message": "Internal server error during login"
@@ -289,7 +300,7 @@ def get_active_user_challenges():
                 cur.execute("SELECT set_user_context(%s);", (g.user_id,))
                 
                 cur.execute("""
-                    SELECT uc.id, c.title, c.description, c.difficulty, 
+                    SELECT uc.id, c.id, c.title, c.description, c.difficulty, 
                            c.xp_reward, uc.progress_days, c.duration_days,
                            uc.started_at
                     FROM user_challenges uc
@@ -298,20 +309,45 @@ def get_active_user_challenges():
                     ORDER BY uc.started_at DESC;
                 """, (g.user_id,))
                 
+                challenge_rows = cur.fetchall()
                 active_challenges = []
-                for row in cur.fetchall():
-                    progress_percentage = (row[5] / row[6]) * 100 if row[6] > 0 else 0
+                
+                for row in challenge_rows:
+                    user_challenge_id = row[0]
+                    challenge_id = row[1]
+                    progress_percentage = (row[6] / row[7]) * 100 if row[7] > 0 else 0
+                    
+                    # Check if checked in today
+                    cur.execute("""
+                        SELECT id FROM daily_logs 
+                        WHERE user_id = %s AND challenge_id = %s AND log_date = CURRENT_DATE;
+                    """, (g.user_id, challenge_id))
+                    checked_in_today = cur.fetchone() is not None
+                    
+                    # Get streak info
+                    cur.execute("""
+                        SELECT current_streak, longest_streak 
+                        FROM streaks 
+                        WHERE user_id = %s AND challenge_id = %s;
+                    """, (g.user_id, challenge_id))
+                    streak_row = cur.fetchone()
+                    current_streak = streak_row[0] if streak_row else 0
+                    longest_streak = streak_row[1] if streak_row else 0
                     
                     active_challenges.append({
-                        "user_challenge_id": row[0],
-                        "title": row[1],
-                        "description": row[2],
-                        "difficulty": row[3],
-                        "xp_reward": row[4],
-                        "progress_days": row[5],
-                        "total_days": row[6],
+                        "user_challenge_id": user_challenge_id,
+                        "challenge_id": challenge_id,
+                        "title": row[2],
+                        "description": row[3],
+                        "difficulty": row[4],
+                        "xp_reward": row[5],
+                        "progress_days": row[6],
+                        "total_days": row[7],
                         "progress_percentage": round(progress_percentage, 1),
-                        "started_at": row[7].isoformat() if row[7] else None
+                        "started_at": row[8].isoformat() if row[8] else None,
+                        "checked_in_today": checked_in_today,
+                        "current_streak": current_streak,
+                        "longest_streak": longest_streak
                     })
                 
                 return jsonify({
@@ -374,10 +410,145 @@ def start_challenge():
                 }), 201
                 
     except Exception as e:
-        logger.error(f"Error starting challenge: {e}")
+        logger.error(f"Error starting challenge: {e}", exc_info=True)
+        error_msg = str(e)
+        if "foreign key" in error_msg.lower() or "does not exist" in error_msg.lower():
+            return jsonify({
+                "success": False, 
+                "message": "Challenge not found"
+            }), 404
         return jsonify({
             "success": False, 
-            "message": "Error starting challenge"
+            "message": "Error starting challenge. Please try again."
+        }), 500
+
+@app.route("/api/challenges/checkin", methods=["POST"])
+@token_required
+def checkin_challenge():
+    """Check in for a challenge (daily check-in)"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    challenge_id = data.get('challenge_id')
+    
+    if not challenge_id:
+        return bad_request("challenge_id is required")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Check if user is participating in this challenge
+                cur.execute("""
+                    SELECT id, progress_days 
+                    FROM user_challenges 
+                    WHERE user_id = %s AND challenge_id = %s AND status = 'active';
+                """, (g.user_id, challenge_id))
+                
+                user_challenge = cur.fetchone()
+                if not user_challenge:
+                    return jsonify({
+                        "success": False, 
+                        "message": "You are not participating in this challenge or it's not active"
+                    }), 404
+                
+                user_challenge_id, current_progress = user_challenge
+                
+                # Check if already checked in today
+                cur.execute("""
+                    SELECT id FROM daily_logs 
+                    WHERE user_id = %s AND challenge_id = %s AND log_date = CURRENT_DATE;
+                """, (g.user_id, challenge_id))
+                
+                if cur.fetchone():
+                    return jsonify({
+                        "success": False, 
+                        "message": "You have already checked in for this challenge today"
+                    }), 409
+                
+                # Insert daily log
+                cur.execute("""
+                    INSERT INTO daily_logs (user_id, challenge_id, log_date, completed)
+                    VALUES (%s, %s, CURRENT_DATE, TRUE)
+                    RETURNING id;
+                """, (g.user_id, challenge_id))
+                
+                log_id = cur.fetchone()[0]
+                
+                # Update progress_days
+                new_progress = current_progress + 1
+                cur.execute("""
+                    UPDATE user_challenges 
+                    SET progress_days = %s
+                    WHERE id = %s;
+                """, (new_progress, user_challenge_id))
+                
+                # Handle streak logic
+                cur.execute("""
+                    SELECT id, current_streak, longest_streak, last_active
+                    FROM streaks
+                    WHERE user_id = %s AND challenge_id = %s;
+                """, (g.user_id, challenge_id))
+                
+                streak_record = cur.fetchone()
+                
+                if streak_record:
+                    streak_id, current_streak, longest_streak, last_active = streak_record
+                    # Check if last_active was yesterday (consecutive day)
+                    cur.execute("""
+                        SELECT last_active = CURRENT_DATE - INTERVAL '1 day' as is_consecutive
+                        FROM streaks
+                        WHERE id = %s;
+                    """, (streak_id,))
+                    is_consecutive = cur.fetchone()[0]
+                    
+                    if is_consecutive:
+                        # Consecutive day - increment streak
+                        new_streak = current_streak + 1
+                    else:
+                        # Not consecutive - reset to 1
+                        new_streak = 1
+                    
+                    new_longest = max(longest_streak, new_streak)
+                    
+                    cur.execute("""
+                        UPDATE streaks
+                        SET current_streak = %s,
+                            longest_streak = %s,
+                            last_active = CURRENT_DATE
+                        WHERE id = %s;
+                    """, (new_streak, new_longest, streak_id))
+                else:
+                    # Create new streak record
+                    new_streak = 1
+                    cur.execute("""
+                        INSERT INTO streaks (user_id, challenge_id, current_streak, longest_streak, last_active)
+                        VALUES (%s, %s, %s, %s, CURRENT_DATE);
+                    """, (g.user_id, challenge_id, new_streak, new_streak))
+                
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Check-in successful!",
+                    "progress_days": new_progress,
+                    "current_streak": new_streak
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error during check-in: {e}", exc_info=True)
+        error_msg = str(e)
+        if "unique" in error_msg.lower() and "daily_logs" in error_msg.lower():
+            return jsonify({
+                "success": False, 
+                "message": "You have already checked in for this challenge today"
+            }), 409
+        return jsonify({
+            "success": False, 
+            "message": "Error during check-in. Please try again."
         }), 500
 
 @app.route("/api/challenges/complete", methods=["POST"])
