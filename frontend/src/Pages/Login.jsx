@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useToastContext } from '../context/ToastContext';
 import Input from '../Components/Input';
 import Button from '../Components/Button';
+import ScreenContainer from '../Components/ScreenContainer';
+import GlassPanel from '../Components/GlassPanel';
+import { Zap } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -11,6 +15,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useUser();
   const navigate = useNavigate();
+  const toast = useToastContext();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -26,47 +31,76 @@ const Login = () => {
     const result = await login(username, password);
 
     if (result.success) {
+      toast.success('Welcome back! 🎉');
       navigate('/dashboard');
     } else {
-      setError(result.message || 'Login failed');
+      const errorMessage = result.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-24 animate-fade-in">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-heading font-bold mb-2 bg-gradient-sunset bg-clip-text text-transparent">
-            Sign In
+    <ScreenContainer className="flex items-center justify-center min-h-screen pb-6 pt-24">
+      <div className="w-full max-w-md space-y-8 animate-slide-up">
+        {/* Logo */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold/20 border-2 border-gold/50">
+            <Zap className="w-8 h-8 text-gold" />
+          </div>
+          <h1 className="font-heading text-3xl font-bold text-pure-white">
+            Reclaim
           </h1>
-          <p className="text-muted-gray">Sign in to continue your journey</p>
+          <p className="text-muted-gray">
+            Continue your habit-building journey
+          </p>
         </div>
 
-        <div className="glass-panel">
+        {/* Login Form */}
+        <GlassPanel className="p-6 space-y-6">
+          <div className="text-center">
+            <h2 className="font-heading text-xl font-semibold text-pure-white">
+              Sign In
+            </h2>
+            <p className="text-sm text-muted-gray mt-1">
+              Welcome back! Sign in to continue
+            </p>
+          </div>
+
           {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded text-red-400 text-sm">
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Input
-              label="Username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoFocus
-            />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-sm text-muted-gray">Username</label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                required
+                autoFocus
+                className="bg-dark-gray/50 border-soft-gray focus:border-gold"
+              />
+            </div>
 
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm text-muted-gray">Password</label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                className="bg-dark-gray/50 border-soft-gray focus:border-gold"
+              />
+            </div>
 
             <Button
               type="submit"
@@ -74,23 +108,21 @@ const Login = () => {
               size="lg"
               loading={loading}
               disabled={loading}
-              className="w-full"
+              className="w-full tap-scale glow-effect"
             >
-              Sign In
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-muted-gray text-sm">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-gold hover:text-gold/80 transition-colors">
-                Sign up
-              </Link>
-            </p>
+          <div className="text-center text-sm">
+            <span className="text-muted-gray">Don't have an account? </span>
+            <Link to="/signup" className="text-gold hover:underline font-medium">
+              Sign up
+            </Link>
           </div>
-        </div>
+        </GlassPanel>
       </div>
-    </div>
+    </ScreenContainer>
   );
 };
 

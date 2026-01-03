@@ -17,11 +17,11 @@ const Input = ({
       <input
         type={type}
         className={`
-          w-full bg-transparent border-b-2 border-soft-gray 
+          w-full bg-dark-gray/50 border border-soft-gray rounded-lg
           text-pure-white placeholder-muted-gray
-          focus:outline-none focus:border-gold focus:bg-dark-gray/30
-          transition-colors duration-200
-          px-2 py-2 font-body
+          focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20
+          transition-all duration-200
+          px-4 py-2.5 font-body
           ${error ? 'border-red-500' : ''}
           ${className}
         `}
