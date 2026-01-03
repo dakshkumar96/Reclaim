@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const ChallengeCard = ({ challenge, onStart, isActive = false }) => {
   const difficultyColors = {
@@ -13,7 +14,7 @@ const ChallengeCard = ({ challenge, onStart, isActive = false }) => {
     hard: 'from-red-500/20 to-pink-500/20',
   };
 
-  return (
+  const CardContent = (
     <div
       className={`
         glass-panel p-4 sm:p-6
@@ -23,7 +24,6 @@ const ChallengeCard = ({ challenge, onStart, isActive = false }) => {
         tap-scale cursor-pointer
         animate-fade-in
       `}
-      onClick={() => !isActive && onStart && onStart(challenge.id)}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
@@ -64,17 +64,22 @@ const ChallengeCard = ({ challenge, onStart, isActive = false }) => {
       </div>
 
       {!isActive && (
-        <button
-          className="w-full mt-2 px-4 py-2 bg-gradient-sunset text-pure-white rounded-lg font-heading text-sm hover:opacity-90 transition-opacity tap-scale"
-          onClick={(e) => {
-            e.stopPropagation();
-            onStart && onStart(challenge.id);
-          }}
-        >
-          Start Challenge
-        </button>
+        <div className="w-full mt-2 px-4 py-2 bg-gradient-sunset text-pure-white rounded-lg font-heading text-sm hover:opacity-90 transition-opacity tap-scale text-center">
+          View Details
+        </div>
       )}
     </div>
+  );
+
+  // If active, return as-is. Otherwise, wrap in Link
+  if (isActive) {
+    return CardContent;
+  }
+
+  return (
+    <Link to={`/challenges/${challenge.id}`} className="block">
+      {CardContent}
+    </Link>
   );
 };
 
