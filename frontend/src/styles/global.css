@@ -42,15 +42,60 @@
   }
 
   .glow-effect {
+    box-shadow: 0 0 10px rgba(247, 215, 116, 0.3);
     @apply transition-shadow duration-300;
   }
 
   .glow-effect:hover {
-    box-shadow: 0 0 15px rgba(247, 215, 116, 0.4);
+    box-shadow: 0 0 20px rgba(247, 215, 116, 0.5);
+  }
+  
+  .neon-text {
+    text-shadow: 0 0 10px rgba(247, 215, 116, 0.5);
   }
 
   .tap-scale {
     @apply transition-transform duration-150 active:scale-95;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Page Transition */
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Mobile Responsive Utilities */
+  @media (max-width: 640px) {
+    .mobile-text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .mobile-p-4 {
+      padding: 1rem;
+    }
   }
 }
 
