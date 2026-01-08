@@ -2,22 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { useToastContext } from '../context/ToastContext';
 import { getProfile } from '../api/user';
+import { getUserBadges } from '../api/badges';
 import ScreenContainer from '../Components/ScreenContainer';
 import GlassPanel from '../Components/GlassPanel';
 import XPBar from '../Components/XPBar';
 import Button from '../Components/Button';
 import ErrorDisplay from '../Components/ErrorDisplay';
+import BadgeCard from '../Components/BadgeCard';
 import { Trophy as TrophyIcon, Target as TargetIcon, Award as AwardIcon, Calendar as CalendarIcon, TrendingUp as TrendingUpIcon, User as UserIcon, LogOut as LogOutIcon } from 'lucide-react';
 
 const Profile = () => {
   const { username, xp, level, logout } = useUser();
   const [profile, setProfile] = useState(null);
+  const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const toast = useToastContext();
 
   useEffect(() => {
     loadProfile();
+    loadBadges();
   }, []);
 
   const loadProfile = async () => {
@@ -36,6 +40,17 @@ const Profile = () => {
       toast.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBadges = async () => {
+    try {
+      const response = await getUserBadges();
+      if (response.success) {
+        setBadges(response.badges);
+      }
+    } catch (error) {
+      console.error('Error loading badges:', error);
     }
   };
 
@@ -123,6 +138,25 @@ const Profile = () => {
             <p className="text-xs text-muted-gray uppercase tracking-wide">Badges</p>
           </GlassPanel>
         </div>
+
+        {/* Badges Section */}
+        <GlassPanel className="p-6">
+          <h3 className="font-heading font-semibold mb-4 text-pure-white flex items-center gap-2">
+            <AwardIcon className="w-5 h-5 text-gold" />
+            Your Badges ({badges.length})
+          </h3>
+          {badges.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {badges.map((badge) => (
+                <BadgeCard key={badge.id} badge={badge} earned={true} size="sm" />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-gray text-sm text-center py-8">
+              No badges earned yet. Complete challenges and build streaks to earn badges!
+            </p>
+          )}
+        </GlassPanel>
 
         {/* Account Actions */}
         <GlassPanel className="p-6">
