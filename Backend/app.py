@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-flask-secret-change-me")
 
+# Store conversation history per user (in production, use Redis or database)
+# Format: {user_id: [{"role": "user/assistant", "content": "message"}, ...]}
+user_conversations = {}
+
 # Enable CORS for frontend - allow all localhost origins for development
 CORS(app, 
      origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"],
@@ -356,7 +360,7 @@ def get_active_user_challenges():
                 }), 200
                 
     except Exception as e:
-        logger.error(f"Error fetching active challenges: {e}")
+        logger.error(f"Error fetching active challenges: {e}", exc_info=True)
         return jsonify({
             "success": False, 
             "message": "Error fetching active challenges"
@@ -576,10 +580,14 @@ def complete_challenge():
                 
                 conn.commit()
                 
+                # Check and award badges after challenge completion
+                new_badges = check_and_award_badges(g.user_id)
+                
                 return jsonify({
                     "success": True,
                     "message": "Challenge completed successfully!",
-                    "data": result
+                    "data": result,
+                    "new_badges": new_badges
                 }), 200
                 
     except Exception as e:
@@ -685,6 +693,171 @@ def logout():
             "message": "Error during logout"
         }), 500
 
+def check_and_award_badges(user_id):
+    """Check if user qualifies for any badges and award them"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get user stats
+                cur.execute("""
+                    SELECT xp, level FROM users WHERE id = %s;
+                """, (user_id,))
+                user_row = cur.fetchone()
+                if not user_row:
+                    return []
+                
+                user_xp, user_level = user_row
+                
+                # Get user's longest streak
+                cur.execute("""
+                    SELECT COALESCE(MAX(longest_streak), 0) 
+                    FROM streaks WHERE user_id = %s;
+                """, (user_id,))
+                longest_streak = cur.fetchone()[0] or 0
+                
+                # Get completed challenges count
+                cur.execute("""
+                    SELECT COUNT(*) FROM user_challenges 
+                    WHERE user_id = %s AND status = 'completed';
+                """, (user_id,))
+                completed_challenges = cur.fetchone()[0] or 0
+                
+                # Get completed challenges by category
+                cur.execute("""
+                    SELECT c.category, COUNT(*) 
+                    FROM user_challenges uc
+                    JOIN challenges c ON uc.challenge_id = c.id
+                    WHERE uc.user_id = %s AND uc.status = 'completed'
+                    GROUP BY c.category;
+                """, (user_id,))
+                category_counts = {row[0]: row[1] for row in cur.fetchall()}
+                
+                # Find badges user qualifies for but hasn't earned
+                cur.execute("""
+                    SELECT b.id, b.name, b.description, b.icon, b.category
+                    FROM badges b
+                    WHERE b.is_active = true
+                    AND NOT EXISTS (
+                        SELECT 1 FROM user_badges ub 
+                        WHERE ub.user_id = %s AND ub.badge_id = b.id
+                    )
+                    AND (
+                        (b.xp_requirement > 0 AND %s >= b.xp_requirement)
+                        OR (b.streak_requirement > 0 AND %s >= b.streak_requirement)
+                        OR (b.xp_requirement = 0 AND b.streak_requirement = 0 
+                            AND b.category = 'challenge' AND %s >= 1)
+                        OR (b.category IN ('health', 'productivity', 'mindfulness', 'education')
+                            AND COALESCE((SELECT COUNT(*) FROM user_challenges uc
+                            JOIN challenges c ON uc.challenge_id = c.id
+                            WHERE uc.user_id = %s AND uc.status = 'completed' 
+                            AND c.category = b.category), 0) >= 3)
+                    );
+                """, (user_id, user_xp, longest_streak, completed_challenges, user_id))
+                
+                new_badges = []
+                for badge_row in cur.fetchall():
+                    badge_id, badge_name, badge_desc, badge_icon, badge_category = badge_row
+                    
+                    # Award the badge
+                    cur.execute("""
+                        INSERT INTO user_badges (user_id, badge_id, earned_at)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (user_id, badge_id) DO NOTHING
+                        RETURNING id;
+                    """, (user_id, badge_id))
+                    
+                    if cur.fetchone():
+                        new_badges.append({
+                            "id": badge_id,
+                            "name": badge_name,
+                            "description": badge_desc,
+                            "icon": badge_icon,
+                            "category": badge_category
+                        })
+                
+                conn.commit()
+                return new_badges
+                
+    except Exception as e:
+        logger.error(f"Error checking badges: {e}")
+        return []
+
+@app.route("/api/badges", methods=["GET"])
+def get_all_badges():
+    """Get all available badges"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, name, description, icon, xp_requirement, 
+                           streak_requirement, category
+                    FROM badges
+                    WHERE is_active = true
+                    ORDER BY category, xp_requirement, streak_requirement;
+                """)
+                
+                badges = []
+                for row in cur.fetchall():
+                    badges.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "icon": row[3],
+                        "xp_requirement": row[4],
+                        "streak_requirement": row[5],
+                        "category": row[6]
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "badges": badges
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching badges: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching badges"
+        }), 500
+
+@app.route("/api/badges/user", methods=["GET"])
+@token_required
+def get_user_badges():
+    """Get badges earned by the current user"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT b.id, b.name, b.description, b.icon, b.category, ub.earned_at
+                    FROM user_badges ub
+                    JOIN badges b ON ub.badge_id = b.id
+                    WHERE ub.user_id = %s
+                    ORDER BY ub.earned_at DESC;
+                """, (g.user_id,))
+                
+                badges = []
+                for row in cur.fetchall():
+                    badges.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "icon": row[3],
+                        "category": row[4],
+                        "earned_at": row[5].isoformat() if row[5] else None
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "badges": badges
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching user badges: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching user badges"
+        }), 500
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
@@ -693,7 +866,7 @@ def not_found(error):
 @app.route("/api/ai/chat", methods=["POST"])
 @token_required
 def ai_chat():
-    """AI coach chat endpoint"""
+    """AI coach chat endpoint with OpenAI integration"""
     if not request.is_json:
         return bad_request("Expected JSON data")
     
@@ -703,23 +876,77 @@ def ai_chat():
     if not message:
         return bad_request("Message is required")
     
-    # Placeholder AI response - replace with actual AI integration
-    responses = [
-        "That's a great question! Let me help you with that.",
-        "I understand. Building habits takes time and consistency.",
-        "Remember, progress is progress, no matter how small!",
-        "You're doing great! Keep up the momentum.",
-        "That's a common challenge. Here's what I suggest...",
-    ]
-    
-    import random
-    ai_response = random.choice(responses)
-    
-    return jsonify({
-        "success": True,
-        "message": ai_response,
-        "response": ai_response
-    }), 200
+    try:
+        # Optional: Get user context for personalized responses
+        user_context = None
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Get user stats for context
+                    cur.execute("""
+                        SELECT level, xp, 
+                               (SELECT COUNT(*) FROM user_challenges 
+                                WHERE user_id = %s AND completed = false) as active_challenges,
+                               (SELECT MAX(current_streak) FROM streaks 
+                                WHERE user_id = %s) as current_streak
+                        FROM users 
+                        WHERE id = %s;
+                    """, (g.user_id, g.user_id, g.user_id))
+                    
+                    result = cur.fetchone()
+                    if result:
+                        user_context = {
+                            'level': result[0],
+                            'xp': result[1],
+                            'active_challenges': result[2] or 0,
+                            'current_streak': result[3] or 0
+                        }
+        except Exception as db_error:
+            logger.warning(f"Could not fetch user context: {db_error}")
+            # Continue without context
+        
+        # Import AI coach function
+        from AI.ai_coach import get_ai_response
+        
+        # Get conversation history for this user (keep last 10 messages)
+        # Create a copy to avoid modifying the original list directly
+        conversation_history = user_conversations.get(g.user_id, [])[:]
+        
+        # Get AI response with conversation history
+        ai_response = get_ai_response(message, user_context, conversation_history)
+        
+        # Update conversation history
+        conversation_history.append({"role": "user", "content": message})
+        conversation_history.append({"role": "assistant", "content": ai_response})
+        
+        # Keep only last 10 messages (5 exchanges) to manage token usage
+        user_conversations[g.user_id] = conversation_history[-10:]
+        
+        return jsonify({
+            "success": True,
+            "message": ai_response,
+            "response": ai_response
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"AI chat error: {e}", exc_info=True)
+        # Check if it's an OpenAI API error
+        error_message = str(e)
+        if "quota" in error_message.lower() or "rate limit" in error_message.lower() or "429" in error_message:
+            return jsonify({
+                "success": False,
+                "message": "OpenAI API quota exceeded. Please check your API key and billing."
+            }), 503
+        elif "authentication" in error_message.lower() or "401" in error_message or "invalid" in error_message.lower():
+            return jsonify({
+                "success": False,
+                "message": "OpenAI API authentication failed. Please check your API key."
+            }), 503
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Sorry, I encountered an error connecting to OpenAI. Please try again."
+            }), 500
 
 @app.errorhandler(404)
 def not_found(error):
