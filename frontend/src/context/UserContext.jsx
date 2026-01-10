@@ -7,6 +7,7 @@ const UserContext = createContext(null);
 export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
   const [username, setUsername] = useState(null);
+  const [email, setEmail] = useState(null);
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
@@ -24,13 +25,17 @@ export const UserProvider = ({ children }) => {
         setToken(storedToken);
         setUserId(userData.id);
         setUsername(userData.username);
+        setEmail(userData.email || null);
         setXp(userData.xp || 0);
         setLevel(userData.level || 1);
         setStreak(userData.streak || 0);
         // Refresh user data from API - use storedToken since setToken is async
         refreshUserWithToken(storedToken);
       } catch (error) {
-        console.error('Error parsing stored user data:', error);
+        // Log only in development mode
+        if (import.meta.env?.MODE === 'development') {
+          console.error('Error parsing stored user data:', error);
+        }
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -55,13 +60,17 @@ export const UserProvider = ({ children }) => {
       setToken(newToken);
       setUserId(user_id);
       setUsername(userUsername);
+      setEmail(email || null);
 
       // Fetch full profile to get XP, level, streak
       await refreshUser();
 
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      // Log only in development mode
+      if (import.meta.env?.MODE === 'development') {
+        console.error('Login error:', error);
+      }
       let errorMessage = 'Login failed';
       
       // Handle network errors
@@ -103,13 +112,24 @@ export const UserProvider = ({ children }) => {
       setToken(newToken);
       setUserId(user_id);
       setUsername(newUsername);
+      setEmail(userData.email || null);
 
       // Fetch full profile
       await refreshUser();
 
       return { success: true };
     } catch (error) {
-      console.error('Signup error:', error);
+      // Log only in development mode
+      if (import.meta.env?.MODE === 'development') {
+        console.error('Signup error:', error);
+        console.error('Full signup error details:', {
+          message: error.message,
+          code: error.code,
+          response: error.response?.data,
+          status: error.response?.status,
+          config: { url: error.config?.url, baseURL: error.config?.baseURL }
+        });
+      }
       let errorMessage = 'Signup failed';
       
       // Handle network errors
@@ -134,15 +154,6 @@ export const UserProvider = ({ children }) => {
         errorMessage = error.message;
       }
       
-      // Log full error for debugging
-      console.error('Full signup error:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: { url: error.config?.url, baseURL: error.config?.baseURL }
-      });
-      
       return {
         success: false,
         message: errorMessage,
@@ -156,6 +167,7 @@ export const UserProvider = ({ children }) => {
     setToken(null);
     setUserId(null);
     setUsername(null);
+    setEmail(null);
     setXp(0);
     setLevel(1);
     setStreak(0);
@@ -177,11 +189,18 @@ export const UserProvider = ({ children }) => {
           const userData = JSON.parse(storedUser);
           userData.xp = profile.xp;
           userData.level = profile.level;
+          if (profile.email) {
+            userData.email = profile.email;
+            setEmail(profile.email);
+          }
           localStorage.setItem('user', JSON.stringify(userData));
         }
       }
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      // Log only in development mode
+      if (import.meta.env?.MODE === 'development') {
+        console.error('Error refreshing user:', error);
+      }
     }
   };
 
@@ -193,6 +212,7 @@ export const UserProvider = ({ children }) => {
   const value = {
     userId,
     username,
+    email,
     xp,
     streak,
     level,
