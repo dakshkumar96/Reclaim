@@ -148,6 +148,21 @@ CREATE TABLE user_badges (
     UNIQUE(user_id, badge_id)            -- User can only earn each badge once
 );
 
+-- User settings table: Stores user preferences and settings
+-- =====================================================
+CREATE TABLE user_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    notifications BOOLEAN DEFAULT TRUE,
+    email_updates BOOLEAN DEFAULT TRUE,
+    show_badges BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Constraints
+    CONSTRAINT one_settings_per_user UNIQUE(user_id)
+);
+
 -- =====================================================
 -- ADDITIONAL CONSTRAINTS AND TRIGGERS
 -- =====================================================

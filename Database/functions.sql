@@ -231,6 +231,7 @@ BEGIN
     v_result := json_build_object(
         'user_id', v_user.id,
         'username', v_user.username,
+        'email', v_user.email,
         'xp', v_user.xp,
         'level', v_user.level,
         'total_challenges', v_total_challenges,
