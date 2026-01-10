@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useToastContext } from '../context/ToastContext';
+import { getSettings, updateSettings, changePassword } from '../api/user';
 import ScreenContainer from '../Components/ScreenContainer';
 import GlassPanel from '../Components/GlassPanel';
 import Button from '../Components/Button';
@@ -25,7 +26,6 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     notifications: true,
     emailUpdates: true,
-    darkMode: true,
     showBadges: true
   });
   
@@ -40,6 +40,10 @@ const Settings = () => {
     new: false,
     confirm: false
   });
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({
@@ -56,13 +60,79 @@ const Settings = () => {
     }));
   };
 
-  const handleSaveSettings = () => {
-    // In a real app, you'd save these to the backend
-    localStorage.setItem('userSettings', JSON.stringify(settings));
-    toast.success('Settings saved successfully!');
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await getSettings();
+      if (response.success && response.settings) {
+        setSettings({
+          notifications: response.settings.notifications ?? true,
+          emailUpdates: response.settings.emailUpdates ?? true,
+          showBadges: response.settings.showBadges ?? true
+        });
+      } else if (!response.success) {
+        // If settings don't exist yet, use defaults (they'll be created on save)
+        setSettings({
+          notifications: true,
+          emailUpdates: true,
+          showBadges: true
+        });
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      // Use defaults if API fails - settings will be created on first save
+      setSettings({
+        notifications: true,
+        emailUpdates: true,
+        showBadges: true
+      });
+      // Don't show error toast - just use defaults silently
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      const response = await updateSettings({
+        notifications: settings.notifications,
+        emailUpdates: settings.emailUpdates,
+        showBadges: settings.showBadges
+      });
+      
+      if (response.success) {
+        toast.success('Settings saved successfully!');
+        // Update local state with server response
+        if (response.settings) {
+          setSettings({
+            notifications: response.settings.notifications,
+            emailUpdates: response.settings.emailUpdates,
+            showBadges: response.settings.showBadges
+          });
+        }
+      } else {
+        toast.error(response.message || 'Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save settings. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast.error('All password fields are required');
+      return;
+    }
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('New passwords do not match');
       return;
@@ -73,26 +143,32 @@ const Settings = () => {
       return;
     }
 
-    // In a real app, you'd call an API endpoint here
-    toast.success('Password changed successfully!');
-    setPasswordForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-  };
-
-  useEffect(() => {
-    // Load saved settings from localStorage
-    const savedSettings = localStorage.getItem('userSettings');
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch (e) {
-        console.error('Error loading settings:', e);
+    try {
+      setChangingPassword(true);
+      const response = await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword
+      });
+      
+      if (response.success) {
+        toast.success('Password changed successfully!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        toast.error(response.message || 'Failed to change password');
       }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to change password. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setChangingPassword(false);
     }
-  }, []);
+  };
 
   return (
     <div className="min-h-screen bg-pure-black relative overflow-hidden">
@@ -104,18 +180,25 @@ const Settings = () => {
         <div className="absolute bottom-1/4 left-1/4 w-[350px] h-[350px] bg-purple/4 rounded-full blur-[90px] animate-pulse animation-delay-2000 pointer-events-none"></div>
       </div>
 
-      <ScreenContainer className="pb-20 pt-24 relative z-10">
+      <div className="pt-24 sm:pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-3xl mx-auto space-y-6 animate-slide-up">
           {/* Header */}
-          <div className="space-y-1">
+          <div className="space-y-1 mb-2">
             <p className="text-text-secondary text-sm font-body">Settings</p>
             <h1 className="font-heading text-3xl sm:text-4xl font-bold text-pure-white">
               Account <span className="bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent">Settings</span>
             </h1>
           </div>
 
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-3">
+              <div className="w-8 h-8 border-2 border-purple/30 border-t-purple rounded-full animate-spin"></div>
+              <p className="text-text-secondary text-sm font-body">Loading settings...</p>
+            </div>
+          ) : (
+            <>
         {/* Profile Settings */}
-        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-2xl p-6 sm:p-8 group hover:border-purple/50 hover:scale-[1.01] transition-all duration-300 shadow-xl hover:shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-5 sm:p-6 group hover:border-purple/40 transition-all duration-200 shadow-lg overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple/8 rounded-full blur-3xl"></div>
           <div className="absolute top-3 right-3 w-2 h-2 bg-purple/40 rounded-full group-hover:bg-purple/60 transition-colors"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent"></div>
@@ -162,7 +245,7 @@ const Settings = () => {
         </div>
 
         {/* Notification Settings */}
-        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-2xl p-6 sm:p-8 group hover:border-purple/50 hover:scale-[1.01] transition-all duration-300 shadow-xl hover:shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-5 sm:p-6 group hover:border-purple/40 transition-all duration-200 shadow-lg overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple/8 rounded-full blur-3xl"></div>
           <div className="absolute top-3 right-3 w-2 h-2 bg-purple/40 rounded-full group-hover:bg-purple/60 transition-colors"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent"></div>
@@ -211,7 +294,7 @@ const Settings = () => {
         </div>
 
         {/* Display Settings */}
-        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-2xl p-6 sm:p-8 group hover:border-purple/50 hover:scale-[1.01] transition-all duration-300 shadow-xl hover:shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-5 sm:p-6 group hover:border-purple/40 transition-all duration-200 shadow-lg overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple/8 rounded-full blur-3xl"></div>
           <div className="absolute top-3 right-3 w-2 h-2 bg-purple/40 rounded-full group-hover:bg-purple/60 transition-colors"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent"></div>
@@ -255,7 +338,7 @@ const Settings = () => {
         </div>
 
         {/* Security Settings */}
-        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-2xl p-6 sm:p-8 group hover:border-purple/50 hover:scale-[1.01] transition-all duration-300 shadow-xl hover:shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-5 sm:p-6 group hover:border-purple/40 transition-all duration-200 shadow-lg overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple/8 rounded-full blur-3xl"></div>
           <div className="absolute top-3 right-3 w-2 h-2 bg-purple/40 rounded-full group-hover:bg-purple/60 transition-colors"></div>
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent"></div>
@@ -337,6 +420,8 @@ const Settings = () => {
             
             <Button
               onClick={handleChangePassword}
+              disabled={changingPassword}
+              loading={changingPassword}
               className="w-full sm:w-auto"
             >
               Change Password
@@ -348,6 +433,8 @@ const Settings = () => {
         <div className="flex flex-col sm:flex-row gap-4">
           <Button
             onClick={handleSaveSettings}
+            disabled={saving || loading}
+            loading={saving}
             className="flex-1 group"
           >
             <Save className="w-4 h-4 mr-2 inline group-hover:scale-110 transition-transform" />
@@ -366,8 +453,10 @@ const Settings = () => {
             Logout
           </Button>
         </div>
+            </>
+          )}
+        </div>
       </div>
-      </ScreenContainer>
     </div>
   );
 };
