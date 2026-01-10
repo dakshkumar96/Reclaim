@@ -730,100 +730,82 @@ const Homepage = () => {
     );
   }
 
-  // Marketing homepage for non-authenticated users
+  // Simple marketing homepage for non-authenticated users (NO DATA LOADING)
   return (
     <div className="min-h-screen bg-pure-black relative overflow-hidden">
-      {/* Enhanced background gradients */}
+      {/* Simple Background */}
       <div className="fixed inset-0 bg-gradient-to-b from-pure-black via-dark-gray to-dark-gray pointer-events-none"></div>
       <div className="fixed top-0 left-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-purple/5 rounded-full blur-3xl pointer-events-none animate-pulse animation-delay-2000"></div>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple/5 rounded-full blur-3xl pointer-events-none"></div>
       
-      {/* Top Section - Hero */}
-      <section className="relative pt-32 sm:pt-40 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-8 z-10 overflow-hidden min-h-[90vh] flex items-center">
-        {/* Enhanced Background Effects */}
-        <div className="absolute inset-0 w-full h-full z-0">
-          {/* Background Video */}
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover opacity-[0.15]"
-          >
-            <source src="/0_Geometric_Shapes_Circles_3840x2160.mp4" type="video/mp4" />
-          </video>
-          
-          {/* Animated Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-pure-black via-pure-black/95 to-pure-black/90"></div>
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple/20 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-gold/10 rounded-full blur-[100px] animate-pulse animation-delay-2000 pointer-events-none"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple/5 rounded-full blur-[150px] pointer-events-none"></div>
-          
-          {/* Grid Pattern Overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(124,58,237,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(124,58,237,0.08)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        </div>
-        
-        <div className="relative z-10 max-w-6xl mx-auto w-full">
-          <div className="text-center">
-            {/* Pill Badge - Smaller and closer */}
-            <div className="inline-flex items-center px-3 py-1.5 mb-3 bg-gradient-to-r from-purple/30 via-purple/20 to-purple/30 backdrop-blur-xl border border-purple/50 rounded-full shadow-lg glow-gold-soft animate-fade-in hover:scale-105 transition-all duration-300 group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-              <Sparkles className="w-3 h-3 text-gold mr-1.5 animate-pulse-glow group-hover:rotate-180 transition-transform duration-500 relative z-10" />
-              <span className="text-[10px] sm:text-xs text-gold font-body font-semibold tracking-wider uppercase relative z-10">All-in-One Habit Toolkit</span>
-            </div>
+      {/* Background Video */}
+      <div className="fixed inset-0 w-full h-full z-0">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover opacity-[0.12]"
+        >
+          <source src="/0_Geometric_Shapes_Circles_3840x2160.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-pure-black via-pure-black/95 to-pure-black/90"></div>
+      </div>
+      
+      {/* Hero Section */}
+      <section className="relative pt-32 sm:pt-40 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-8 z-10 min-h-screen flex items-center">
+        <div className="max-w-6xl mx-auto w-full text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center px-3 py-1.5 mb-6 bg-gradient-to-r from-purple/30 via-purple/20 to-purple/30 backdrop-blur-xl border border-purple/50 rounded-full shadow-lg">
+            <Sparkles className="w-3 h-3 text-gold mr-1.5" />
+            <span className="text-xs text-gold font-body font-semibold tracking-wider uppercase">All-in-One Habit Toolkit</span>
+          </div>
 
-            {/* Main Headline - Enhanced Typography */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-heading font-extrabold mb-4 sm:mb-6 leading-[1.1] text-pure-white tracking-tight px-4 animate-slide-up">
-              <span className="block mb-2">Take control of your</span>
-              <span className="block">
-                <span className="text-pure-white">habits with </span>
-                <span className="bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent relative inline-block">
-                  clarity
-                  <span className="absolute -bottom-1 left-0 right-0 h-1.5 bg-gradient-to-r from-purple via-pink to-gold rounded-full opacity-60 blur-sm"></span>
-                  <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-purple via-pink to-gold rounded-full"></span>
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-heading font-extrabold mb-6 leading-tight text-pure-white tracking-tight">
+            <span className="block mb-3">Take control of your</span>
+            <span className="block bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent">
+              habits with clarity
+            </span>
+          </h1>
+
+          {/* Subheadline */}
+          <p className="text-lg sm:text-xl md:text-2xl text-text-secondary mb-12 max-w-2xl mx-auto leading-relaxed font-body">
+            All your progress insights, finally in one place.{' '}
+            <span className="text-pure-white/90 font-medium">Track challenges, earn XP,</span> and reach your goals with ease.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 mb-16">
+            <Link to="/signup" className="w-full sm:w-auto group">
+              <button className="w-full sm:w-auto text-lg font-body font-semibold bg-gradient-to-r from-purple via-pink to-purple text-pure-white px-10 py-5 rounded-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-2xl hover:shadow-purple/50 relative overflow-hidden">
+                <span className="relative z-10 flex items-center gap-2.5">
+                  Get Started for Free
+                  <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </span>
-              </span>
-            </h1>
+                <div className="absolute inset-0 bg-gradient-to-r from-gold via-purple to-gold opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+            </Link>
+            <Link to="/login" className="w-full sm:w-auto">
+              <button className="w-full sm:w-auto text-lg font-body font-semibold text-pure-white hover:text-gold border-2 border-purple/50 hover:border-gold/70 px-10 py-5 rounded-2xl transition-all duration-300 hover:bg-purple/20 hover:scale-105 active:scale-95 backdrop-blur-sm shadow-lg">
+                Sign In
+              </button>
+            </Link>
+          </div>
 
-            {/* Subheadline - Enhanced */}
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-text-secondary mb-10 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-4 font-body font-light tracking-wide animate-slide-up animation-delay-200">
-              All your progress insights, finally in one place.{' '}
-              <span className="text-pure-white/90 font-medium">Track challenges, earn XP,</span> and reach your goals with ease.
-            </p>
-
-            {/* CTA Buttons - Enhanced */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 px-4 animate-slide-up animation-delay-300">
-              <Link to="/signup" className="w-full sm:w-auto group">
-                <button className="w-full sm:w-auto text-base sm:text-lg font-body font-semibold bg-gradient-to-r from-purple via-pink to-purple text-pure-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-2xl hover:shadow-purple/50 glow-soft hover:glow-effect group-hover:border-gold/50 border-2 border-transparent relative overflow-hidden">
-                  <span className="relative z-10 flex items-center gap-2.5">
-                    Get Started for Free
-                    <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-gold via-purple to-gold opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </button>
-              </Link>
-              <Link to="/login" className="w-full sm:w-auto group">
-                <button className="w-full sm:w-auto text-base sm:text-lg font-body font-semibold text-pure-white hover:text-gold border-2 border-purple/50 hover:border-gold/70 px-8 sm:px-10 py-4 sm:py-5 rounded-2xl transition-all duration-300 hover:bg-purple/20 hover:scale-105 active:scale-95 backdrop-blur-sm shadow-lg hover:shadow-xl bg-dark-gray/30">
-                  Sign In
-                </button>
-              </Link>
+          {/* Trust Indicators */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm text-muted-gray">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Free Forever</span>
             </div>
-
-            {/* Trust Indicators */}
-            <div className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm text-muted-gray animate-fade-in animation-delay-400">
-              <div className="flex items-center gap-2 group/trust hover:text-emerald-300 transition-colors">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Free Forever</span>
-              </div>
-              <div className="flex items-center gap-2 group/trust hover:text-emerald-300 transition-colors">
-                <Shield className="w-4 h-4" />
-                <span>Privacy First</span>
-              </div>
-              <div className="flex items-center gap-2 group/trust hover:text-emerald-300 transition-colors">
-                <Users className="w-4 h-4" />
-                <span>Join Thousands</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span>Privacy First</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span>Join Thousands</span>
             </div>
           </div>
         </div>
@@ -834,7 +816,7 @@ const Homepage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-heading font-extrabold mb-4 text-pure-white">
-              Everything you need to <span className="bg-gradient-primary bg-clip-text text-transparent">succeed</span>
+              Everything you need to <span className="bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent">succeed</span>
             </h2>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto font-body">
               Powerful features designed to help you build lasting habits
@@ -843,21 +825,21 @@ const Homepage = () => {
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-6 hover:border-purple/40 transition-all duration-300 shadow-lg">
-              <div className="w-12 h-12 rounded-xl bg-gradient-sunset/20 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gold/20 flex items-center justify-center mb-4">
                 <Target className="w-6 h-6 text-gold" />
               </div>
               <h3 className="text-xl font-heading font-bold text-pure-white mb-2">Track Progress</h3>
               <p className="text-text-secondary font-body">Monitor your daily habits and see your progress over time</p>
             </div>
             <div className="bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-6 hover:border-purple/40 transition-all duration-300 shadow-lg">
-              <div className="w-12 h-12 rounded-xl bg-gradient-retro-purple/20 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-purple/20 flex items-center justify-center mb-4">
                 <Trophy className="w-6 h-6 text-purple" />
               </div>
               <h3 className="text-xl font-heading font-bold text-pure-white mb-2">Earn Rewards</h3>
               <p className="text-text-secondary font-body">Level up, earn XP, and unlock achievements as you progress</p>
             </div>
             <div className="bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-6 hover:border-purple/40 transition-all duration-300 shadow-lg">
-              <div className="w-12 h-12 rounded-xl bg-gradient-xp/20 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald/20 flex items-center justify-center mb-4">
                 <BarChart3 className="w-6 h-6 text-emerald-400" />
               </div>
               <h3 className="text-xl font-heading font-bold text-pure-white mb-2">Analytics</h3>
@@ -868,7 +850,7 @@ const Homepage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 relative z-10">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative z-10 pb-32">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl sm:text-5xl font-heading font-extrabold mb-8 text-pure-white">
             Ready to Transform Your Habits?
@@ -878,17 +860,12 @@ const Homepage = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
             <Link to="/signup" className="w-full sm:w-auto group">
-              <button className="relative w-full sm:w-auto text-base sm:text-lg font-body font-semibold bg-gradient-primary text-pure-white px-10 py-5 rounded-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-2xl hover:shadow-purple/30 glow-soft hover:glow-effect group-hover:border-gold/50 border-2 border-transparent overflow-hidden">
+              <button className="relative w-full sm:w-auto text-lg font-body font-semibold bg-gradient-to-r from-purple via-pink to-purple text-pure-white px-10 py-5 rounded-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-2xl hover:shadow-purple/30 overflow-hidden">
                 <span className="relative z-10 flex items-center gap-2.5">
                   Get Started for Free
-                  <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                  <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-gold via-purple to-gold opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
-            </Link>
-            <Link to="/challenges" className="w-full sm:w-auto group">
-              <button className="w-full sm:w-auto text-base sm:text-lg font-body font-semibold text-pure-white hover:text-gold border-2 border-purple/50 hover:border-gold/70 px-10 py-5 rounded-2xl transition-all duration-300 hover:bg-purple/10 hover:scale-105 active:scale-95 backdrop-blur-sm shadow-lg hover:shadow-xl">
-                Browse Challenges
               </button>
             </Link>
           </div>
