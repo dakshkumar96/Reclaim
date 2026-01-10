@@ -5,50 +5,52 @@ from functools import wraps
 
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
-from dotenv import load_dotenv
 import psycopg2
 import bcrypt
 import jwt
 
-# Load environment variables
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BASE_DIR, 'database.env'))
+from config import Config
 
-# Configuration
-DB_NAME = os.getenv("DB_NAME", "reclaim")
-DB_USER = os.getenv("DB_USER", "reclaim_app")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
+# Validate required environment variables in production
+is_production = os.getenv("FLASK_ENV") == "production" or os.getenv("ENVIRONMENT") == "production"
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
-JWT_ALG = "HS256"
-JWT_EXPIRES_MIN = int(os.getenv("JWT_EXPIRES_MIN", "1440"))
+if is_production:
+    required_vars = ["DB_NAME", "DB_USER", "DB_PASSWORD", "JWT_SECRET", "FLASK_SECRET_KEY"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables in production: {', '.join(missing_vars)}")
+
+# Use Config class for all configuration
+DB_NAME = Config.DB_NAME
+DB_USER = Config.DB_USER
+DB_PASSWORD = Config.DB_PASSWORD
+DB_HOST = Config.DB_HOST
+JWT_SECRET = Config.JWT_SECRET
+JWT_ALG = Config.JWT_ALG
+JWT_EXPIRES_MIN = Config.JWT_EXPIRES_MIN
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-flask-secret-change-me")
+app.config["SECRET_KEY"] = Config.SECRET_KEY
 
 # Store conversation history per user (in production, use Redis or database)
 # Format: {user_id: [{"role": "user/assistant", "content": "message"}, ...]}
 user_conversations = {}
 
-# Enable CORS for frontend - allow all localhost origins for development
+# Enable CORS for frontend - configurable for production
+FRONTEND_URLS = os.getenv("FRONTEND_URLS", "http://localhost:5173,http://localhost:3000").split(",")
+FRONTEND_URLS = [url.strip() for url in FRONTEND_URLS]  # Clean whitespace
 CORS(app, 
-     origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"],
+     origins=FRONTEND_URLS,
      supports_credentials=True, 
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 def get_db_connection():
     """Get a database connection"""
-    return psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-    )
+    return psycopg2.connect(**Config.db_dsn())
 
 def create_token(user_id, username):
     """Create JWT token for authenticated user"""
@@ -610,11 +612,16 @@ def complete_challenge():
             }), 500
 
 @app.route("/api/leaderboard", methods=["GET"])
+@token_required
 def get_leaderboard():
     """Get the current leaderboard"""
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get leaderboard
                 cur.execute("""
                     SELECT username, xp, level, rank, completed_challenges, badges_earned
                     FROM leaderboard_view
@@ -625,21 +632,41 @@ def get_leaderboard():
                 leaderboard = []
                 for row in cur.fetchall():
                     leaderboard.append({
-                        "username": row[0],
-                        "xp": row[1],
-                        "level": row[2],
-                        "rank": row[3],
-                        "completed_challenges": row[4],
-                        "badges_earned": row[5]
+                        "username": row[0] or "",
+                        "xp": row[1] or 0,
+                        "level": row[2] or 1,
+                        "rank": row[3] or 0,
+                        "completed_challenges": row[4] or 0,
+                        "badges_earned": row[5] or 0
                     })
+                
+                # Get current user's rank
+                user_rank = None
+                try:
+                    cur.execute("SELECT get_user_rank(%s);", (g.user_id,))
+                    rank_result = cur.fetchone()
+                    if rank_result and rank_result[0]:
+                        user_rank = rank_result[0]
+                except Exception as rank_error:
+                    logger.warning(f"Could not fetch user rank: {rank_error}")
+                    # Try to find user in leaderboard
+                    for user in leaderboard:
+                        cur.execute("""
+                            SELECT id FROM users WHERE username = %s;
+                        """, (user["username"],))
+                        user_result = cur.fetchone()
+                        if user_result and user_result[0] == g.user_id:
+                            user_rank = user["rank"]
+                            break
                 
                 return jsonify({
                     "success": True,
-                    "leaderboard": leaderboard
+                    "leaderboard": leaderboard,
+                    "user_rank": user_rank
                 }), 200
                 
     except Exception as e:
-        logger.error(f"Error fetching leaderboard: {e}")
+        logger.error(f"Error fetching leaderboard: {e}", exc_info=True)
         return jsonify({
             "success": False, 
             "message": "Error fetching leaderboard"
@@ -948,6 +975,357 @@ def ai_chat():
                 "message": "Sorry, I encountered an error connecting to OpenAI. Please try again."
             }), 500
 
+@app.route("/api/analytics", methods=["GET"])
+@token_required
+def get_analytics():
+    """Get analytics data for dashboard charts"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get weekly activity data (last 7 days)
+                cur.execute("""
+                    WITH date_series AS (
+                        SELECT generate_series(
+                            CURRENT_DATE - INTERVAL '6 days',
+                            CURRENT_DATE,
+                            INTERVAL '1 day'
+                        )::date AS day
+                    )
+                    SELECT 
+                        ds.day,
+                        TO_CHAR(ds.day, 'Dy') as day_name,
+                        COALESCE(COUNT(dl.id), 0) as check_ins
+                    FROM date_series ds
+                    LEFT JOIN daily_logs dl ON dl.log_date = ds.day 
+                        AND dl.user_id = %s 
+                        AND dl.completed = true
+                    GROUP BY ds.day
+                    ORDER BY ds.day;
+                """, (g.user_id,))
+                
+                weekly_data = []
+                # Expected day abbreviations (PostgreSQL TO_CHAR with 'Dy' returns these)
+                day_abbrev_map = {
+                    'mon': 'Mon', 'tue': 'Tue', 'wed': 'Wed', 'thu': 'Thu',
+                    'fri': 'Fri', 'sat': 'Sat', 'sun': 'Sun'
+                }
+                for row in cur.fetchall():
+                    check_ins = row[2]
+                    # Normalize day name: TO_CHAR with 'Dy' returns 3-char abbreviations
+                    # Handle potential trailing spaces and ensure proper format
+                    day_name_raw = row[1].strip()[:3].lower() if row[1] else ''
+                    day_name = day_abbrev_map.get(day_name_raw, day_name_raw.capitalize() if day_name_raw else '')
+                    weekly_data.append({
+                        "date": row[0].isoformat(),
+                        "day": day_name,
+                        "checkIns": check_ins,
+                        "xp": check_ins * 5  # Base XP per check-in
+                    })
+                
+                # Get category distribution from active challenges
+                cur.execute("""
+                    SELECT 
+                        COALESCE(c.category, 'Other') as category,
+                        COUNT(*) as count
+                    FROM user_challenges uc
+                    JOIN challenges c ON uc.challenge_id = c.id
+                    WHERE uc.user_id = %s AND uc.status = 'active'
+                    GROUP BY c.category
+                    ORDER BY count DESC;
+                """, (g.user_id,))
+                
+                colors = ['#7C3AED', '#EC4899', '#10B981', '#3B82F6', '#F59E0B', '#EF4444']
+                category_data = []
+                for i, row in enumerate(cur.fetchall()):
+                    category_data.append({
+                        "name": row[0],
+                        "value": row[1],
+                        "color": colors[i % len(colors)]
+                    })
+                
+                # Get XP history (last 7 days based on check-ins)
+                cur.execute("""
+                    WITH date_series AS (
+                        SELECT generate_series(
+                            CURRENT_DATE - INTERVAL '6 days',
+                            CURRENT_DATE,
+                            INTERVAL '1 day'
+                        )::date AS day
+                    )
+                    SELECT 
+                        ds.day,
+                        TO_CHAR(ds.day, 'Dy') as day_name,
+                        COALESCE(COUNT(dl.id), 0) * 5 as xp_earned
+                    FROM date_series ds
+                    LEFT JOIN daily_logs dl ON dl.log_date = ds.day 
+                        AND dl.user_id = %s 
+                        AND dl.completed = true
+                    GROUP BY ds.day
+                    ORDER BY ds.day;
+                """, (g.user_id,))
+                
+                xp_data = []
+                cumulative_xp = 0
+                # Expected day abbreviations (PostgreSQL TO_CHAR with 'Dy' returns these)
+                day_abbrev_map = {
+                    'mon': 'Mon', 'tue': 'Tue', 'wed': 'Wed', 'thu': 'Thu',
+                    'fri': 'Fri', 'sat': 'Sat', 'sun': 'Sun'
+                }
+                for row in cur.fetchall():
+                    daily_xp = row[2]
+                    cumulative_xp += daily_xp
+                    # Normalize day name same way as weekly activity
+                    day_name_raw = row[1].strip()[:3].lower() if row[1] else ''
+                    day_name = day_abbrev_map.get(day_name_raw, day_name_raw.capitalize() if day_name_raw else '')
+                    xp_data.append({
+                        "date": row[0].isoformat(),
+                        "day": day_name,
+                        "xp": daily_xp,
+                        "cumulative": cumulative_xp
+                    })
+                
+                # Get total stats
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_check_ins,
+                        COALESCE(SUM(CASE WHEN log_date >= CURRENT_DATE - INTERVAL '7 days' THEN 1 ELSE 0 END), 0) as weekly_check_ins
+                    FROM daily_logs 
+                    WHERE user_id = %s AND completed = true;
+                """, (g.user_id,))
+                
+                stats_row = cur.fetchone()
+                total_check_ins = stats_row[0] if stats_row else 0
+                weekly_check_ins = stats_row[1] if stats_row else 0
+                
+                # Get streak data
+                cur.execute("""
+                    SELECT 
+                        COALESCE(MAX(current_streak), 0) as max_current_streak,
+                        COALESCE(MAX(longest_streak), 0) as max_longest_streak
+                    FROM streaks 
+                    WHERE user_id = %s;
+                """, (g.user_id,))
+                
+                streak_row = cur.fetchone()
+                max_current_streak = streak_row[0] if streak_row else 0
+                max_longest_streak = streak_row[1] if streak_row else 0
+                
+                return jsonify({
+                    "success": True,
+                    "analytics": {
+                        "weeklyActivity": weekly_data,
+                        "categoryDistribution": category_data,
+                        "xpProgress": xp_data,
+                        "stats": {
+                            "totalCheckIns": total_check_ins,
+                            "weeklyCheckIns": weekly_check_ins,
+                            "currentStreak": max_current_streak,
+                            "longestStreak": max_longest_streak
+                        }
+                    }
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching analytics: {e}", exc_info=True)
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching analytics data"
+        }), 500
+
+@app.route("/api/settings", methods=["GET"])
+@token_required
+def get_settings():
+    """Get current user's settings"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get user settings or create default if not exists
+                cur.execute("""
+                    SELECT notifications, email_updates, show_badges
+                    FROM user_settings
+                    WHERE user_id = %s;
+                """, (g.user_id,))
+                
+                settings_row = cur.fetchone()
+                if settings_row:
+                    settings = {
+                        "notifications": settings_row[0],
+                        "emailUpdates": settings_row[1],
+                        "showBadges": settings_row[2]
+                    }
+                else:
+                    # Create default settings
+                    cur.execute("""
+                        INSERT INTO user_settings (user_id, notifications, email_updates, show_badges)
+                        VALUES (%s, TRUE, TRUE, TRUE)
+                        RETURNING notifications, email_updates, show_badges;
+                    """, (g.user_id,))
+                    default_row = cur.fetchone()
+                    conn.commit()
+                    settings = {
+                        "notifications": default_row[0],
+                        "emailUpdates": default_row[1],
+                        "showBadges": default_row[2]
+                    }
+                
+                return jsonify({
+                    "success": True,
+                    "settings": settings
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching settings: {e}", exc_info=True)
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching settings"
+        }), 500
+
+@app.route("/api/settings", methods=["PUT"])
+@token_required
+def update_settings():
+    """Update user's settings"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    notifications = data.get('notifications')
+    email_updates = data.get('emailUpdates')
+    show_badges = data.get('showBadges')
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Check if settings exist
+                cur.execute("""
+                    SELECT id FROM user_settings WHERE user_id = %s;
+                """, (g.user_id,))
+                
+                if cur.fetchone():
+                    # Update existing settings
+                    cur.execute("""
+                        UPDATE user_settings
+                        SET notifications = COALESCE(%s, notifications),
+                            email_updates = COALESCE(%s, email_updates),
+                            show_badges = COALESCE(%s, show_badges),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s
+                        RETURNING notifications, email_updates, show_badges;
+                    """, (notifications, email_updates, show_badges, g.user_id))
+                else:
+                    # Create new settings
+                    cur.execute("""
+                        INSERT INTO user_settings (user_id, notifications, email_updates, show_badges)
+                        VALUES (%s, COALESCE(%s, TRUE), COALESCE(%s, TRUE), COALESCE(%s, TRUE))
+                        RETURNING notifications, email_updates, show_badges;
+                    """, (g.user_id, notifications, email_updates, show_badges))
+                
+                updated_row = cur.fetchone()
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Settings updated successfully",
+                    "settings": {
+                        "notifications": updated_row[0],
+                        "emailUpdates": updated_row[1],
+                        "showBadges": updated_row[2]
+                    }
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error updating settings: {e}", exc_info=True)
+        return jsonify({
+            "success": False, 
+            "message": "Error updating settings"
+        }), 500
+
+@app.route("/api/settings/password", methods=["POST"])
+@token_required
+def change_password():
+    """Change user's password"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    current_password = data.get('currentPassword')
+    new_password = data.get('newPassword')
+    confirm_password = data.get('confirmPassword')
+    
+    if not current_password or not new_password or not confirm_password:
+        return bad_request("currentPassword, newPassword, and confirmPassword are required")
+    
+    if new_password != confirm_password:
+        return jsonify({
+            "success": False,
+            "message": "New passwords do not match"
+        }), 400
+    
+    if len(new_password) < 6:
+        return jsonify({
+            "success": False,
+            "message": "Password must be at least 6 characters long"
+        }), 400
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get current password hash
+                cur.execute("""
+                    SELECT password_hash FROM users WHERE id = %s;
+                """, (g.user_id,))
+                
+                user_row = cur.fetchone()
+                if not user_row:
+                    return jsonify({
+                        "success": False,
+                        "message": "User not found"
+                    }), 404
+                
+                current_password_hash = user_row[0]
+                
+                # Verify current password
+                if not bcrypt.checkpw(current_password.encode('utf-8'), current_password_hash.encode('utf-8')):
+                    return jsonify({
+                        "success": False,
+                        "message": "Current password is incorrect"
+                    }), 401
+                
+                # Hash new password
+                new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                # Update password
+                cur.execute("""
+                    UPDATE users
+                    SET password_hash = %s
+                    WHERE id = %s;
+                """, (new_password_hash, g.user_id))
+                
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Password changed successfully"
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error changing password: {e}", exc_info=True)
+        return jsonify({
+            "success": False, 
+            "message": "Error changing password"
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"success": False, "message": "Endpoint not found"}), 404
@@ -957,5 +1335,7 @@ def internal_error(error):
     return jsonify({"success": False, "message": "Internal server error"}), 500
 
 if __name__ == "__main__":
-    logger.info("Starting Reclaim Habit Tracker API...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+    port = int(os.getenv("PORT", "5000"))
+    logger.info(f"Starting Reclaim Habit Tracker API on port {port} (debug={debug_mode})...")
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
