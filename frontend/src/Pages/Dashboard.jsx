@@ -4,6 +4,7 @@ import { useUser } from '../context/UserContext';
 import { useToastContext } from '../context/ToastContext';
 import { getActiveChallenges, checkinChallenge } from '../api/challenges';
 import { getUserBadges } from '../api/badges';
+import { getAnalytics } from '../api/user';
 import ScreenContainer from '../Components/ScreenContainer';
 import GlassPanel from '../Components/GlassPanel';
 import XPBar from '../Components/XPBar';
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const { username, xp, level, refreshUser, isAuthenticated, loading: userLoading } = useUser();
   const [activeChallenges, setActiveChallenges] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState({});
   const navigate = useNavigate();
@@ -32,16 +34,21 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [challengesResponse, badgesResponse] = await Promise.all([
+      const [challengesResponse, badgesResponse, analyticsResponse] = await Promise.all([
         getActiveChallenges(),
         getUserBadges().catch(() => ({ success: false, badges: [] })),
+        getAnalytics().catch(() => ({ success: false, analytics: null })),
       ]);
       
       if (challengesResponse.success) {
-        setActiveChallenges(challengesResponse.active_challenges || []);
+        const challenges = challengesResponse.active_challenges || [];
+        setActiveChallenges(challenges);
       }
       if (badgesResponse.success) {
         setUserBadges(badgesResponse.badges || []);
+      }
+      if (analyticsResponse.success && analyticsResponse.analytics) {
+        setAnalytics(analyticsResponse.analytics);
       }
       await refreshUser();
     } catch (error) {
@@ -82,35 +89,73 @@ const Dashboard = () => {
   const totalBadges = userBadges.length;
   const maxStreak = activeChallenges.reduce((max, c) => Math.max(max, c.current_streak || 0), 0);
 
-  // Generate weekly activity data (mock data for now - can be replaced with real API data)
+  // Get weekly activity data from real API
   const getWeeklyActivityData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const today = new Date().getDay();
-    return days.map((day, index) => {
-      // Simulate check-ins based on active challenges
-      const checkIns = Math.floor(Math.random() * totalActiveChallenges) + (totalActiveChallenges > 0 ? 1 : 0);
+    if (!analytics || !analytics.weeklyActivity) {
+      // Return empty data if analytics not loaded yet
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days.map(day => ({ day, checkIns: 0, xp: 0 }));
+    }
+    
+    // API returns last 7 days starting from 6 days ago to today
+    // We need to map to proper day names and order
+    const dayMap = { 'sun': 'Sun', 'mon': 'Mon', 'tue': 'Tue', 'wed': 'Wed', 'thu': 'Thu', 'fri': 'Fri', 'sat': 'Sat' };
+    const dayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    // Create a map of day name to data
+    const activityMap = {};
+    analytics.weeklyActivity.forEach(item => {
+      const dayKey = item.day ? item.day.toLowerCase() : '';
+      if (dayMap[dayKey]) {
+        activityMap[dayMap[dayKey]] = item;
+      }
+    });
+    
+    // Return in Sun-Sat order with proper day names
+    return dayOrder.map(day => {
+      const activity = activityMap[day] || { checkins: 0, completed: 0 };
+      const checkins = activity.checkins || 0;
+      // Calculate XP: each check-in gives ~10 XP average
+      const avgXPPerCheckIn = 10;
       return {
         day,
-        checkIns: checkIns,
-        xp: checkIns * 5, // Assuming 5 XP per check-in
+        checkIns: checkins,
+        xp: checkins * avgXPPerCheckIn,
       };
     });
   };
 
-  // Generate category distribution data
+  // Generate category distribution data from user's active (started) challenges only
   const getCategoryData = () => {
+    if (!activeChallenges || activeChallenges.length === 0) {
+      return [];
+    }
+    
     const categories = {};
     activeChallenges.forEach(challenge => {
-      const category = challenge.category || 'Other';
-      categories[category] = (categories[category] || 0) + 1;
+      // Handle both 'category' and 'category_name' fields
+      const category = challenge.category || challenge.category_name || '';
+      if (category && String(category).trim() !== '') {
+        const normalizedCategory = String(category).trim().toLowerCase();
+        categories[normalizedCategory] = (categories[normalizedCategory] || 0) + 1;
+      }
     });
     
-    const colors = ['#7C3AED', '#EC4899', '#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
-    return Object.entries(categories).map(([name, value], index) => ({
-      name,
+    // Only show categories with at least 1 active challenge
+    const validCategories = Object.entries(categories).filter(([_, count]) => count > 0);
+    
+    if (validCategories.length === 0) {
+      return [];
+    }
+    
+    const colors = ['#7C3AED', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const result = validCategories.map(([name, value], index) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
       value,
       color: colors[index % colors.length],
     }));
+    
+    return result;
   };
 
   const weeklyData = getWeeklyActivityData();
@@ -119,16 +164,15 @@ const Dashboard = () => {
   if (userLoading || (isAuthenticated && loading)) {
     return (
       <ScreenContainer className="pb-20 pt-24">
-        <div className="mb-8">
-          <div className="h-8 bg-soft-gray rounded w-64 mb-4 animate-pulse"></div>
-          <div className="h-5 bg-soft-gray rounded w-96 animate-pulse"></div>
-        </div>
         <div className="mb-6">
-          <div className="h-24 bg-soft-gray rounded animate-pulse"></div>
+          <div className="h-10 bg-medium-gray/50 rounded w-48"></div>
+        </div>
+        <div className="mb-4">
+          <div className="h-16 bg-medium-gray/50 rounded"></div>
         </div>
         <SkeletonStats />
-        <div className="mt-6 space-y-4">
-          {[1, 2, 3].map((i) => (
+        <div className="mt-4 space-y-3">
+          {[1, 2].map((i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -142,8 +186,10 @@ const Dashboard = () => {
       <ScreenContainer className="pb-20 pt-20 animate-fade-in">
         <div className="max-w-4xl mx-auto text-center">
           <div className="mb-12 animate-slide-up">
-            <h1 className="text-5xl font-heading font-bold mb-4 bg-gradient-sunset bg-clip-text text-transparent">
-              Build Better Habits
+            <h1 className="text-5xl font-heading font-bold mb-4 text-pure-white" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+              <span style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 50%, #FFFFFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+                Build Better Habits
+              </span>
             </h1>
             <p className="text-xl text-muted-gray mb-8">
               Gamified habit tracking that makes personal growth fun and rewarding
@@ -203,14 +249,16 @@ const Dashboard = () => {
       </div>
 
       <ScreenContainer className="pb-32 pt-24 relative z-10">
-        <div className="max-w-7xl mx-auto space-y-10 animate-slide-up">
+        <div className="max-w-7xl mx-auto space-y-10">
           {/* Page Title Section */}
           <div className="mb-8">
-            <h1 className="font-heading text-4xl sm:text-5xl font-bold text-pure-white mb-3">
-              Welcome back, <span className="bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent">{username || 'Champion'}</span>
-        </h1>
-            <p className="text-text-secondary text-base font-body max-w-2xl">
-              Track your progress, complete daily check-ins, and watch your habits transform.
+            <h1 className="text-4xl sm:text-5xl font-heading font-bold mb-3 relative z-20 text-pure-white" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+              <span style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 50%, #FFFFFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+                Dashboard
+              </span>
+            </h1>
+            <p className="text-text-tertiary text-sm font-body max-w-2xl">
+              Track your progress and complete daily check-ins
             </p>
           </div>
 
@@ -254,11 +302,11 @@ const Dashboard = () => {
 
           {/* Charts Section */}
           <div>
-            <h2 className="font-heading text-2xl font-bold text-pure-white mb-6">Analytics</h2>
+            <h2 className="font-body text-xl font-semibold text-pure-white mb-4">Analytics</h2>
             <div className="grid md:grid-cols-2 gap-6">
               {/* Weekly Activity Chart */}
               <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-6 shadow-lg">
-                <h3 className="font-body font-semibold text-pure-white text-base mb-5">Weekly Activity</h3>
+                <h3 className="font-body font-medium text-pure-white text-sm mb-4">Weekly Activity</h3>
                 <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.1)" />
@@ -285,8 +333,8 @@ const Dashboard = () => {
 
               {/* Category Distribution Chart */}
               <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-xl p-6 shadow-lg">
-                <h3 className="font-body font-semibold text-pure-white text-base mb-5">Challenges by Category</h3>
-                {categoryData.length > 0 ? (
+                <h3 className="font-body font-medium text-pure-white text-sm mb-4">Challenges by Category</h3>
+                {categoryData && categoryData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
                       <Pie
@@ -294,13 +342,14 @@ const Dashboard = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
                         outerRadius={70}
                         fill="#8884d8"
                         dataKey="value"
+                        isAnimationActive={true}
                       >
                         {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color || '#7C3AED'} />
                         ))}
                       </Pie>
                       <Tooltip 
@@ -309,13 +358,18 @@ const Dashboard = () => {
                           border: '1px solid rgba(124,58,237,0.3)',
                           borderRadius: '8px',
                           color: '#F8F8F8'
-                        }} 
+                        }}
+                        formatter={(value, name) => [`${value} challenge${value !== 1 ? 's' : ''}`, name]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-[220px] text-text-tertiary">
-                    <p className="text-sm font-body">No challenges yet</p>
+                    <p className="text-sm font-body">
+                      {activeChallenges.length === 0 
+                        ? 'Start challenges to see category distribution' 
+                        : `No categories found in your ${activeChallenges.length} active challenge${activeChallenges.length !== 1 ? 's' : ''}`}
+                    </p>
                   </div>
                 )}
               </div>
@@ -324,7 +378,7 @@ const Dashboard = () => {
             {/* XP Progress Over Time Chart */}
             {weeklyData.length > 0 && (
               <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-emerald/25 rounded-xl p-6 shadow-lg mt-6">
-                <h3 className="font-body font-semibold text-pure-white text-base mb-5">XP Earned This Week</h3>
+                <h3 className="font-body font-medium text-pure-white text-sm mb-4">XP Earned This Week</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={weeklyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(16,185,129,0.1)" />
@@ -355,7 +409,7 @@ const Dashboard = () => {
           {/* Active Challenges Section */}
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="font-heading text-2xl font-bold text-pure-white">Active Challenges</h2>
+              <h2 className="font-body text-xl font-semibold text-pure-white">Active Challenges</h2>
           <Button
             variant="outline"
             size="sm"
@@ -420,7 +474,7 @@ const Dashboard = () => {
                     </div>
                           <div className="w-full h-2 bg-dark-gray/50 rounded-full overflow-hidden mb-3">
                       <div
-                              className="h-full bg-gradient-to-r from-purple to-pink rounded-full transition-all duration-500"
+                              className="h-full bg-gradient-to-r from-purple to-blue rounded-full transition-all duration-500"
                         style={{ width: `${challenge.progress_percentage || 0}%` }}
                       />
                     </div>
