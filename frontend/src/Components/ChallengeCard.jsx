@@ -17,10 +17,10 @@ const ChallengeCard = ({ challenge, onStart, isActive = false }) => {
       iconColor: 'text-gold'
     },
     hard: {
-      color: 'text-pink',
-      bgColor: 'bg-pink/10',
-      borderColor: 'border-pink/30',
-      iconColor: 'text-pink'
+      color: 'text-red',
+      bgColor: 'bg-red/10',
+      borderColor: 'border-red/30',
+      iconColor: 'text-red'
     }
   };
 
