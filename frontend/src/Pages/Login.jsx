@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useToastContext } from '../context/ToastContext';
+import Input from '../Components/Input';
 import Button from '../Components/Button';
+import ScreenContainer from '../Components/ScreenContainer';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -38,153 +40,101 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-24 pb-32 relative overflow-hidden bg-pure-black">
-      {/* Website Theme Background */}
-      <div className="fixed inset-0 bg-gradient-to-b from-pure-black via-dark-gray to-dark-gray pointer-events-none"></div>
-      <div className="fixed top-0 left-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
-      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-purple/5 rounded-full blur-3xl pointer-events-none animate-pulse animation-delay-2000"></div>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple/5 rounded-full blur-3xl pointer-events-none"></div>
-      
-      {/* Background Video */}
-      <div className="fixed inset-0 w-full h-full z-0">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover opacity-[0.12]"
-        >
-          <source src="/0_Geometric_Shapes_Circles_3840x2160.mp4" type="video/mp4" />
-        </video>
-        
-        {/* Animated Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-pure-black via-pure-black/95 to-pure-black/90"></div>
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple/15 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-gold/8 rounded-full blur-[100px] animate-pulse animation-delay-2000 pointer-events-none"></div>
-        
-        {/* Grid Pattern Overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(124,58,237,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(124,58,237,0.06)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+    <div className="min-h-screen bg-pure-black relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-pure-black via-dark-gray/95 to-pure-black"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(124,58,237,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(124,58,237,0.04)_1px,transparent_1px)] bg-[size:24px_24px] opacity-50"></div>
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple/6 rounded-full blur-[100px] animate-pulse pointer-events-none"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-[350px] h-[350px] bg-purple/4 rounded-full blur-[90px] animate-pulse animation-delay-2000 pointer-events-none"></div>
       </div>
 
-      {/* Blurred Website Preview Elements - Pinterest style */}
-      <div className="absolute inset-0 opacity-50 blur-xl pointer-events-none">
-        {/* Simulated Header */}
-        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-purple/20 via-dark-gray/70 to-purple/20 border-b border-purple/20 flex items-center px-8">
-          <div className="text-2xl font-heading font-bold bg-gradient-sunset bg-clip-text text-transparent">Reclaim</div>
-          <div className="ml-auto flex gap-4">
-            <div className="w-20 h-8 bg-purple/30 rounded-lg"></div>
-            <div className="w-20 h-8 bg-gold/30 rounded-lg"></div>
-          </div>
-        </div>
-        
-        {/* Simulated Content Cards */}
-        <div className="absolute top-24 left-8 w-64 h-48 bg-gradient-to-br from-purple/20 to-dark-gray/60 rounded-2xl border border-purple/20 shadow-lg"></div>
-        <div className="absolute top-32 right-8 w-72 h-56 bg-gradient-to-br from-gold/20 to-dark-gray/60 rounded-2xl border border-gold/20 shadow-lg"></div>
-        <div className="absolute bottom-24 left-1/4 w-56 h-40 bg-gradient-to-br from-purple/20 to-dark-gray/60 rounded-2xl border border-purple/20 shadow-lg"></div>
-        <div className="absolute bottom-32 right-1/4 w-64 h-48 bg-gradient-to-br from-gold/20 to-dark-gray/60 rounded-2xl border border-gold/20 shadow-lg"></div>
-        
-        {/* Simulated Stats */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-8">
-          <div className="w-32 h-24 bg-gradient-sunset/30 rounded-xl border border-gold/20 shadow-lg"></div>
-          <div className="w-32 h-24 bg-purple/30 rounded-xl border border-purple/20 shadow-lg"></div>
-          <div className="w-32 h-24 bg-gold/30 rounded-xl border border-gold/20 shadow-lg"></div>
-        </div>
-      </div>
-      
-      {/* Additional blur overlay */}
-      <div className="absolute inset-0 bg-dark-gray/40 backdrop-blur-sm pointer-events-none"></div>
+      <ScreenContainer className="flex items-center justify-center min-h-screen pb-8 pt-24 relative z-10">
+        <div className="w-full max-w-[420px] space-y-6 animate-slide-up">
 
-      {/* Main Modal Container - Exact Pinterest layout */}
-      <div className="relative z-10 w-full max-w-[420px]">
-        {/* Modal Card */}
-        <div className="bg-dark-gray/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-soft-gray/20 overflow-hidden">
-          {/* Header Bar - Pinterest style */}
-          <div className="px-6 pt-6 pb-4 border-b border-soft-gray/20">
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 flex items-center justify-center">
-                <div className="w-6 h-6 bg-gradient-sunset rounded-full"></div>
-              </div>
-              <h2 className="text-xl font-heading font-bold text-pure-white flex-1 text-center">
-                Welcome to Reclaim
-              </h2>
-              <div className="w-8"></div>
-            </div>
-          </div>
-
-          {/* Form Content */}
-          <div className="px-6 py-6">
-            {/* Error Message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email/Username Field */}
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-pure-white mb-1.5">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Username"
-                  required
-                  autoFocus
-                  className="w-full px-4 py-3 bg-medium-gray/80 border border-soft-gray/30 rounded-lg text-pure-white placeholder-pure-white/50 focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/30 transition-all text-base"
-                />
+          {/* Login Form */}
+          <div className="relative bg-gradient-to-br from-dark-gray/95 to-medium-gray/85 backdrop-blur-xl border border-purple/25 rounded-2xl p-8 shadow-xl overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple/5 rounded-full blur-2xl"></div>
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent"></div>
+            
+            <div className="relative space-y-5">
+              {/* Form Header */}
+              <div className="text-center">
+                <h2 className="font-heading text-2xl font-bold text-pure-white mb-1">
+                  Sign In
+                </h2>
+                <p className="text-sm text-text-secondary font-body">
+                  Welcome back! Sign in to continue
+                </p>
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-pure-white mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm font-body">
+                  {error}
+                </div>
+              )}
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="username" className="block text-sm font-semibold text-pure-white font-body">
+                    Username
+                  </label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your username"
+                    required
+                    autoFocus
+                    className="bg-dark-gray/60 border-purple/25 focus:border-purple/60 focus:ring-2 focus:ring-purple/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className="block text-sm font-semibold text-pure-white font-body">
+                    Password
+                  </label>
+                  <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     required
-                    className="w-full px-4 py-3 bg-medium-gray/80 border border-soft-gray/30 rounded-lg text-pure-white placeholder-pure-white/50 focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/30 transition-all text-base pr-10"
+                    className="bg-dark-gray/60 border-purple/25 focus:border-purple/60 focus:ring-2 focus:ring-purple/20"
                   />
                 </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={loading}
+                  disabled={loading}
+                  className="w-full mt-4"
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+              </form>
+
+              {/* Sign Up Link */}
+              <div className="text-center pt-3 border-t border-purple/20">
+                <p className="text-sm text-text-secondary font-body">
+                  Don't have an account?{' '}
+                  <Link to="/signup" className="text-purple hover:text-pink transition-colors font-semibold hover:underline">
+                    Sign up
+                  </Link>
+                </p>
               </div>
-
-              {/* Forgot Password Link */}
-              <div className="text-right">
-                <Link to="#" className="text-sm text-purple hover:text-purple-light font-medium">
-                  Forgot your password?
-                </Link>
-              </div>
-
-              {/* Submit Button - Full width, Pinterest style */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-sunset text-pure-white font-semibold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base mt-2"
-              >
-                {loading ? 'Signing in...' : 'Log in'}
-              </button>
-            </form>
-
-            {/* Footer Links */}
-            <div className="mt-6 pt-6 border-t border-soft-gray/20">
-              <p className="text-sm text-pure-white/70 text-center">
-                Don't have an account?{' '}
-                <Link to="/signup" className="text-purple hover:text-purple-light font-semibold">
-                  Sign up
-                </Link>
-              </p>
             </div>
           </div>
         </div>
-      </div>
+      </ScreenContainer>
     </div>
   );
 };

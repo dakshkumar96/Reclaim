@@ -67,13 +67,17 @@ const ChatAI = () => {
   };
 
   return (
-    <ScreenContainer className="pb-24 animate-fade-in">
-      <div className="mb-6 animate-slide-up">
-        <h1 className="text-3xl font-heading font-bold mb-2">AI Coach</h1>
-        <p className="text-muted-gray">Get personalized guidance on building better habits</p>
+    <ScreenContainer className="pb-24 pt-24">
+      <div className="mb-6">
+        <h1 className="text-4xl sm:text-5xl font-heading font-bold mb-3 text-pure-white" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+          <span style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 50%, #FFFFFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+            AI Coach
+          </span>
+        </h1>
+        <p className="text-text-tertiary text-sm">Get personalized guidance on building better habits</p>
       </div>
 
-      <GlassPanel className="h-[calc(100vh-280px)] flex flex-col">
+      <GlassPanel className="h-[calc(100vh-320px)] flex flex-col">
         <div className="flex-1 overflow-y-auto space-y-4 p-4">
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />

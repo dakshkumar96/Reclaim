@@ -30,8 +30,10 @@ const About = () => {
         <div className="max-w-4xl mx-auto space-y-8 animate-slide-up">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className="font-heading text-4xl sm:text-5xl font-bold text-pure-white">
-              About <span className="bg-gradient-to-r from-purple via-pink to-gold bg-clip-text text-transparent">Reclaim</span>
+            <h1 className="text-4xl sm:text-5xl font-heading font-bold mb-3 text-pure-white" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+              <span style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 50%, #FFFFFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+                About Reclaim
+              </span>
             </h1>
             <p className="text-text-secondary text-lg max-w-2xl mx-auto font-body leading-relaxed">
               Your personal habit-building companion designed to help you reclaim control of your life, one challenge at a time.
