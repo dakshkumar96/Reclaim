@@ -8,7 +8,7 @@ const LevelUpModal = ({ newLevel, onClose }) => {
       <GlassPanel className="p-8 max-w-md w-full mx-4 text-center animate-scale-in">
         <div className="mb-4">
           <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-3xl font-bold bg-gradient-sunset bg-clip-text text-transparent mb-2">
+          <h2 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
             Level Up!
           </h2>
           <div className="text-5xl font-bold text-gold my-4">

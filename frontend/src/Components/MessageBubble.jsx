@@ -10,13 +10,13 @@ const MessageBubble = ({ message }) => {
         className={`max-w-[80%] rounded-lg p-3 ${
           isAI
             ? 'bg-soft-gray text-pure-white'
-            : 'bg-gradient-sunset text-pure-black'
+            : 'bg-gradient-primary text-pure-white'
         }`}
       >
         <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
         <p
           className={`text-xs mt-1 ${
-            isAI ? 'text-muted-gray' : 'text-pure-black/60'
+            isAI ? 'text-muted-gray' : 'text-pure-white/70'
           }`}
         >
           {time}

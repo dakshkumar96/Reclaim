@@ -8,6 +8,8 @@ export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
   const [username, setUsername] = useState(null);
   const [email, setEmail] = useState(null);
+  const [firstName, setFirstName] = useState(null);
+  const [lastName, setLastName] = useState(null);
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
@@ -22,13 +24,17 @@ export const UserProvider = ({ children }) => {
     if (storedToken && storedUser) {
       try {
         const userData = JSON.parse(storedUser);
+        
         setToken(storedToken);
         setUserId(userData.id);
         setUsername(userData.username);
         setEmail(userData.email || null);
+        setFirstName(userData.first_name || null);
+        setLastName(userData.last_name || null);
         setXp(userData.xp || 0);
         setLevel(userData.level || 1);
         setStreak(userData.streak || 0);
+        
         // Refresh user data from API - use storedToken since setToken is async
         refreshUserWithToken(storedToken);
       } catch (error) {
@@ -46,12 +52,13 @@ export const UserProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       const response = await loginAPI({ username, password });
-      const { token: newToken, user_id, username: userUsername, email } = response;
+      const { token: newToken, user_id, username: userUsername, email, first_name } = response;
 
       const userData = {
         id: user_id,
         username: userUsername,
         email: email,
+        first_name: first_name || null,
       };
 
       localStorage.setItem('token', newToken);
@@ -61,8 +68,10 @@ export const UserProvider = ({ children }) => {
       setUserId(user_id);
       setUsername(userUsername);
       setEmail(email || null);
+      setFirstName(first_name || null);
+      // Note: lastName not returned from login, will be loaded from profile
 
-      // Fetch full profile to get XP, level, streak
+      // Fetch full profile to get XP, level, streak, and first_name
       await refreshUser();
 
       return { success: true };
@@ -98,12 +107,14 @@ export const UserProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       const response = await signupAPI(userData);
-      const { token: newToken, user_id, username: newUsername } = response;
+      const { token: newToken, user_id, username: newUsername, first_name, last_name } = response;
 
       const newUser = {
         id: user_id,
         username: newUsername,
         email: userData.email,
+        first_name: first_name || null,
+        last_name: last_name || null,
       };
 
       localStorage.setItem('token', newToken);
@@ -113,8 +124,10 @@ export const UserProvider = ({ children }) => {
       setUserId(user_id);
       setUsername(newUsername);
       setEmail(userData.email || null);
+      setFirstName(first_name || null);
+      setLastName(last_name || null);
 
-      // Fetch full profile
+      // Fetch full profile to get XP, level, etc.
       await refreshUser();
 
       return { success: true };
@@ -168,6 +181,7 @@ export const UserProvider = ({ children }) => {
     setUserId(null);
     setUsername(null);
     setEmail(null);
+    setFirstName(null);
     setXp(0);
     setLevel(1);
     setStreak(0);
@@ -183,6 +197,8 @@ export const UserProvider = ({ children }) => {
       if (profile) {
         setXp(profile.xp || 0);
         setLevel(profile.level || 1);
+        setFirstName(profile.first_name || null);
+        setLastName(profile.last_name || null);
         // Update stored user data
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
@@ -193,6 +209,9 @@ export const UserProvider = ({ children }) => {
             userData.email = profile.email;
             setEmail(profile.email);
           }
+          // Always update first_name and last_name in localStorage
+          userData.first_name = profile.first_name || null;
+          userData.last_name = profile.last_name || null;
           localStorage.setItem('user', JSON.stringify(userData));
         }
       }
@@ -213,6 +232,8 @@ export const UserProvider = ({ children }) => {
     userId,
     username,
     email,
+        firstName,
+        lastName,
     xp,
     streak,
     level,

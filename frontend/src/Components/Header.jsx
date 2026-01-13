@@ -47,6 +47,7 @@ const Header = () => {
     { path: '/challenges', label: 'Challenges' },
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/leaderboard', label: 'Leaderboard' },
+    { path: '/chat', label: 'AI Coach' },
   ];
 
   return (
@@ -142,13 +143,6 @@ const Header = () => {
                       className="block px-4 py-3 text-sm text-text-tertiary hover:text-pure-white hover:bg-purple/10 transition-all duration-300 font-body"
                     >
                     Profile
-                    </Link>
-                    <Link
-                      to="/chat"
-                      onClick={() => setShowUserMenu(false)}
-                      className="block px-4 py-3 text-sm text-text-tertiary hover:text-pure-white hover:bg-purple/10 transition-all duration-300 font-body"
-                    >
-                      AI Coach
                     </Link>
                     <Link
                       to="/settings"

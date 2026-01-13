@@ -6,6 +6,11 @@ const PageTransition = ({ children }) => {
   const [displayLocation, setDisplayLocation] = useState(location);
   const [transitionStage, setTransitionStage] = useState('fadeIn');
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location]);
+
   useEffect(() => {
     if (location !== displayLocation) {
       setTransitionStage('fadeOut');
@@ -17,7 +22,8 @@ const PageTransition = ({ children }) => {
       const timer = setTimeout(() => {
         setDisplayLocation(location);
         setTransitionStage('fadeIn');
-      }, 150);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [transitionStage, location]);
@@ -27,8 +33,7 @@ const PageTransition = ({ children }) => {
       className={`page-transition ${transitionStage}`}
       style={{
         opacity: transitionStage === 'fadeOut' ? 0 : 1,
-        transform: transitionStage === 'fadeOut' ? 'translateY(10px)' : 'translateY(0)',
-        transition: 'opacity 0.15s ease-out, transform 0.15s ease-out',
+        transition: 'opacity 0.1s ease-out',
       }}
     >
       {children}
