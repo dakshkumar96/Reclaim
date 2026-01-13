@@ -90,15 +90,17 @@ const Profile = () => {
         {/* Header */}
         <div className="space-y-1">
           <p className="text-muted-gray text-sm">Your Profile</p>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-pure-white">
-            {username || 'User'} <span className="text-gold neon-text">⚡</span>
+          <h1 className="text-4xl sm:text-5xl font-heading font-bold mb-3 text-pure-white" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+            <span style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 50%, #FFFFFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+              Profile
+            </span>
           </h1>
         </div>
 
         {/* Profile Card */}
         <GlassPanel className="p-6 sm:p-8 hover:border-gold/50 transition-all">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-sunset flex items-center justify-center text-2xl font-bold text-pure-white flex-shrink-0">
+            <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-2xl font-bold text-pure-white flex-shrink-0">
               {username?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="flex-1">

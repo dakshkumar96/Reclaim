@@ -24,3 +24,8 @@ export const changePassword = async (passwordData) => {
   const response = await api.post('/settings/password', passwordData);
   return response.data;
 };
+
+export const updateProfile = async (profileData) => {
+  const response = await api.put('/profile', profileData);
+  return response.data;
+};
