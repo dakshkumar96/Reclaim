@@ -167,6 +167,15 @@ def signup():
                 
                 conn.commit()
                 
+                # Get the created user's first_name and last_name
+                cur.execute(
+                    """SELECT first_name, last_name FROM users WHERE id = %s;""",
+                    (user_id,)
+                )
+                user_name_data = cur.fetchone()
+                user_first_name = user_name_data[0] if user_name_data else None
+                user_last_name = user_name_data[1] if user_name_data else None
+                
                 # Create JWT token
                 token = create_token(user_id, username)
                 
@@ -175,6 +184,8 @@ def signup():
                     "message": "User created successfully",
                     "user_id": user_id,
                     "username": username,
+                    "first_name": user_first_name,
+                    "last_name": user_last_name,
                     "token": token
                 }), 201
                 
@@ -217,7 +228,7 @@ def login():
             with conn.cursor() as cur:
                 # Get user by username
                 cur.execute(
-                    """SELECT id, username, password_hash, email 
+                    """SELECT id, username, password_hash, email, first_name 
                        FROM users WHERE username = %s;""",
                     (username,)
                 )
@@ -229,7 +240,7 @@ def login():
                         "message": "Invalid credentials"
                     }), 401
                 
-                user_id, db_username, db_password_hash, email = user
+                user_id, db_username, db_password_hash, email, first_name = user
                 
                 # Verify password
                 if not bcrypt.checkpw(password.encode('utf-8'), db_password_hash.encode('utf-8')):
@@ -247,6 +258,7 @@ def login():
                     "user_id": user_id,
                     "username": username,
                     "email": email,
+                    "first_name": first_name,
                     "token": token
                 }), 200
                 
@@ -308,7 +320,7 @@ def get_active_user_challenges():
                 cur.execute("""
                     SELECT uc.id, c.id, c.title, c.description, c.difficulty, 
                            c.xp_reward, uc.progress_days, c.duration_days,
-                           uc.started_at
+                           uc.started_at, c.category
                     FROM user_challenges uc
                     JOIN challenges c ON uc.challenge_id = c.id
                     WHERE uc.user_id = %s AND uc.status = 'active'
@@ -353,7 +365,8 @@ def get_active_user_challenges():
                         "started_at": row[8].isoformat() if row[8] else None,
                         "checked_in_today": checked_in_today,
                         "current_streak": current_streak,
-                        "longest_streak": longest_streak
+                        "longest_streak": longest_streak,
+                        "category": row[9] if len(row) > 9 else None
                     })
                 
                 return jsonify({
@@ -695,12 +708,81 @@ def get_profile():
                     "success": True,
                     "profile": result
                 }), 200
-                
     except Exception as e:
-        logger.error(f"Error fetching profile: {e}")
+        logger.error(f"Get profile error: {e}", exc_info=True)
         return jsonify({
-            "success": False, 
-            "message": "Error fetching profile"
+            "success": False,
+            "message": "Failed to retrieve profile"
+        }), 500
+
+@app.route("/api/profile", methods=["PUT"])
+@token_required
+def update_profile():
+    """Update current user's profile information"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    first_name = data.get('first_name', '').strip() or None
+    last_name = data.get('last_name', '').strip() or None
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Update user profile
+                update_fields = []
+                params = []
+                
+                if first_name is not None:
+                    update_fields.append("first_name = %s")
+                    params.append(first_name)
+                
+                if last_name is not None:
+                    update_fields.append("last_name = %s")
+                    params.append(last_name)
+                
+                if not update_fields:
+                    return bad_request("No fields to update")
+                
+                params.append(g.user_id)
+                
+                query = f"""
+                    UPDATE users 
+                    SET {', '.join(update_fields)}
+                    WHERE id = %s
+                    RETURNING id, username, email, first_name, last_name;
+                """
+                
+                cur.execute(query, params)
+                updated_user = cur.fetchone()
+                
+                if not updated_user:
+                    return jsonify({
+                        "success": False,
+                        "message": "User not found"
+                    }), 404
+                
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Profile updated successfully",
+                    "user": {
+                        "id": updated_user[0],
+                        "username": updated_user[1],
+                        "email": updated_user[2],
+                        "first_name": updated_user[3],
+                        "last_name": updated_user[4]
+                    }
+                }), 200
+    except Exception as e:
+        logger.error(f"Update profile error: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": "Failed to update profile"
         }), 500
 
 @app.route("/api/logout", methods=["POST"])
@@ -723,6 +805,203 @@ def logout():
         return jsonify({
             "success": False, 
             "message": "Error during logout"
+        }), 500
+
+@app.route("/api/settings", methods=["GET"])
+@token_required
+def get_settings():
+    """Get user settings"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT notifications, email_updates, show_badges
+                    FROM user_settings
+                    WHERE user_id = %s;
+                """, (g.user_id,))
+                
+                result = cur.fetchone()
+                if result:
+                    return jsonify({
+                        "success": True,
+                        "settings": {
+                            "notifications": result[0],
+                            "email_updates": result[1],
+                            "show_badges": result[2]
+                        }
+                    }), 200
+                else:
+                    # Return default settings if none exist
+                    return jsonify({
+                        "success": True,
+                        "settings": {
+                            "notifications": True,
+                            "email_updates": True,
+                            "show_badges": True
+                        }
+                    }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching settings: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching settings"
+        }), 500
+
+@app.route("/api/settings", methods=["PUT"])
+@token_required
+def update_settings():
+    """Update user settings"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    notifications = data.get('notifications', True)
+    email_updates = data.get('email_updates', True)
+    show_badges = data.get('show_badges', True)
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Upsert settings
+                cur.execute("""
+                    INSERT INTO user_settings (user_id, notifications, email_updates, show_badges, updated_at)
+                    VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (user_id) 
+                    DO UPDATE SET 
+                        notifications = EXCLUDED.notifications,
+                        email_updates = EXCLUDED.email_updates,
+                        show_badges = EXCLUDED.show_badges,
+                        updated_at = CURRENT_TIMESTAMP;
+                """, (g.user_id, notifications, email_updates, show_badges))
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Settings updated successfully"
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error updating settings: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error updating settings"
+        }), 500
+
+@app.route("/api/settings/password", methods=["POST"])
+@token_required
+def change_password():
+    """Change user password"""
+    if not request.is_json:
+        return bad_request("Expected JSON data")
+    
+    data = request.get_json()
+    current_password = data.get('currentPassword', '')
+    new_password = data.get('newPassword', '')
+    
+    if not current_password or not new_password:
+        return bad_request("Current password and new password are required")
+    
+    if len(new_password) < 6:
+        return bad_request("New password must be at least 6 characters long")
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get current password hash
+                cur.execute("""
+                    SELECT password_hash FROM users WHERE id = %s;
+                """, (g.user_id,))
+                
+                result = cur.fetchone()
+                if not result:
+                    return jsonify({
+                        "success": False,
+                        "message": "User not found"
+                    }), 404
+                
+                current_password_hash = result[0]
+                
+                # Verify current password
+                if not bcrypt.checkpw(current_password.encode('utf-8'), current_password_hash.encode('utf-8')):
+                    return jsonify({
+                        "success": False,
+                        "message": "Current password is incorrect"
+                    }), 401
+                
+                # Hash new password
+                new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                # Update password
+                cur.execute("""
+                    UPDATE users 
+                    SET password_hash = %s 
+                    WHERE id = %s;
+                """, (new_password_hash, g.user_id))
+                conn.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Password changed successfully"
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error changing password: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error changing password"
+        }), 500
+
+@app.route("/api/analytics", methods=["GET"])
+@token_required
+def get_analytics():
+    """Get user analytics including weekly activity"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set user context for RLS
+                cur.execute("SELECT set_user_context(%s);", (g.user_id,))
+                
+                # Get weekly activity (last 7 days)
+                cur.execute("""
+                    SELECT 
+                        TO_CHAR(ds.day, 'Dy') as day_name,
+                        COUNT(dl.id) as checkins,
+                        COALESCE(SUM(CASE WHEN dl.completed THEN 1 ELSE 0 END), 0) as completed
+                    FROM (
+                        SELECT generate_series(
+                            CURRENT_DATE - INTERVAL '6 days',
+                            CURRENT_DATE,
+                            '1 day'::interval
+                        )::date as day
+                    ) ds
+                    LEFT JOIN daily_logs dl ON DATE(dl.log_date) = ds.day 
+                        AND dl.user_id = %s
+                    GROUP BY ds.day
+                    ORDER BY ds.day;
+                """, (g.user_id,))
+                
+                weekly_activity = []
+                for row in cur.fetchall():
+                    day_name = row[0][:3].lower()  # Normalize to 3-char lowercase
+                    weekly_activity.append({
+                        "day": day_name,
+                        "checkins": row[1] or 0,
+                        "completed": row[2] or 0
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "analytics": {
+                        "weeklyActivity": weekly_activity
+                    }
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error fetching analytics: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Error fetching analytics"
         }), 500
 
 def check_and_award_badges(user_id):
@@ -989,5 +1268,7 @@ def internal_error(error):
     return jsonify({"success": False, "message": "Internal server error"}), 500
 
 if __name__ == "__main__":
-    logger.info("Starting Reclaim Habit Tracker API...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Only run debug mode if not in production
+    debug_mode = not is_production
+    logger.info(f"Starting Reclaim Habit Tracker API... (debug={debug_mode})")
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)

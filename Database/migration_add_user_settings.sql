@@ -66,11 +66,13 @@ BEGIN
     FROM user_badges 
     WHERE user_id = p_user_id;
     
-    -- Build result JSON (including email)
+    -- Build result JSON (including email and names)
     v_result := json_build_object(
         'user_id', v_user.id,
         'username', v_user.username,
         'email', v_user.email,
+        'first_name', v_user.first_name,
+        'last_name', v_user.last_name,
         'xp', v_user.xp,
         'level', v_user.level,
         'total_challenges', v_total_challenges,
