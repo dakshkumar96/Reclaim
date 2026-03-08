@@ -1,4 +1,4 @@
-import React from 'react';
+   import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { ToastProvider } from './context/ToastContext';
@@ -8,7 +8,7 @@ import PageTransition from './Components/PageTransition';
 import Header from './Components/Header';
 import Footer from './Components/Footer';
 import Login from './Pages/Login';
-import Signup from './Pages/Signup';
+import Signup from './Pages/Signup';    [m
 import Homepage from './Pages/Homepage';
 import Dashboard from './Pages/Dashboard';
 import Challenges from './Pages/Challenges';
