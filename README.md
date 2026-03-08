@@ -16,6 +16,10 @@
 
 **Reclaim** is a full-stack web application that gamifies habit formation through challenges, rewards, and social competition. Built with modern technologies, it combines the psychology of gamification with practical habit tracking to help users build lasting positive behaviors.
 
+> 💼 **For LinkedIn / Portfolio:**
+> 
+> *A full-stack, gamified habit-tracking application built with React, Vite, and Flask. Reclaim utilizes a PostgreSQL database with Row-Level Security and materialized views to handle real-time XP tracking, daily check-ins, and a live leaderboard. The intuitive UI, styled with Tailwind CSS, leverages gamification psychology (streaks, leveling, badges) to help users build lasting consistency in their daily lives.*
+
 ---
 
 ## ✨ Features
